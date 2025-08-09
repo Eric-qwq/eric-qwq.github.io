@@ -17,7 +17,8 @@
       color:#fff;
       font-size:24px;
       cursor:pointer;
-      background:rgba(0,0,0,0.5);
+      background:rgba(0,0,0,0.6);
+      z-index:10;
     }
   </style>
 </head>
@@ -33,19 +34,25 @@
           music = document.getElementById('music');
 
     let cw, ch;
-    function resize(){ cw = canvas.width = window.innerWidth; ch = canvas.height = window.innerHeight; }
-    window.addEventListener('resize', resize); resize();
+    function resize() {
+      cw = canvas.width = window.innerWidth;
+      ch = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
 
     const lanes = 4,
           laneW = () => cw / lanes,
           receptorY = () => ch - 100,
           noteSize = () => laneW() * 0.8,
           hitMargin = 30,
+          perfectMargin = 10,
           preSpawnTime = 2000,
           beatInterval = 600,
           pattern = [0,1,2,3,1,0,3,2,0,1,2,3,2,1,3,0];
 
-    let speed, notes = [], active = [], startTime = 0, playing = false;
+    let speed, notes = [], active = [], feedbacks = [];
+    let startTime = 0, playing = false, score = 0;
 
     function initNotes(){
       notes = pattern.map((lane, i) => {
@@ -60,13 +67,48 @@
       speed = ch / preSpawnTime;
       initNotes();
       startTime = performance.now();
+      music.currentTime = 0;
       music.play();
       playing = true;
+      score = 0;
       startOverlay.style.display = 'none';
       requestAnimationFrame(loop);
     }
 
     startOverlay.addEventListener('click', startGame);
+
+    function tryHit(lane){
+      const now = performance.now() - startTime;
+      // 找最近的該 lane note
+      let candidates = active.filter(n => n.lane === lane && !n.hit);
+      if (!candidates.length) {
+        pushFeedback('Miss', lane);
+        return;
+      }
+      let nearest = candidates.reduce((a, b) => {
+        let ya = (now - a.spawnTime) * speed,
+            yb = (now - b.spawnTime) * speed;
+        return Math.abs(ya - receptorY()) < Math.abs(yb - receptorY()) ? a : b;
+      });
+      const y = (now - nearest.spawnTime) * speed,
+            delta = y - receptorY(),
+            ad = Math.abs(delta);
+
+      let judgement = '';
+      if (ad <= perfectMargin) {
+        judgement = 'Perfect';
+        score += 100;
+      } else if (ad <= hitMargin) {
+        judgement = 'Good';
+        score += 50;
+      } else {
+        judgement = 'Miss';
+      }
+
+      nearest.hit = true;
+      active = active.filter(n => n !== nearest);
+      pushFeedback(judgement, lane);
+    }
 
     document.addEventListener('keydown', e => {
       const keyMap = { 'a':0, 's':1, 'd':2, 'f':3 };
@@ -80,19 +122,13 @@
       tryHit(lane);
     });
 
-    function tryHit(lane){
-      const now = performance.now() - startTime;
-      for (let i = 0; i < active.length; i++){
-        const n = active[i];
-        if (n.lane === lane && !n.hit){
-          const y = (now - n.spawnTime) * speed;
-          if (Math.abs(y - receptorY()) <= hitMargin){
-            n.hit = true;
-            active.splice(i, 1);
-          }
-          break;
-        }
-      }
+    function pushFeedback(text, lane){
+      feedbacks.push({
+        text,
+        x: lane * laneW() + laneW()/2,
+        y: receptorY(),
+        t: performance.now()
+      });
     }
 
     function loop(){
@@ -105,28 +141,54 @@
         }
       });
 
-      // 繪製
+      // 繪製背景
       ctx.clearRect(0, 0, cw, ch);
 
-      // receptor
+      // 繪製接收條
       for (let i = 0; i < lanes; i++){
         ctx.fillStyle = '#333';
         ctx.fillRect(i * laneW() + laneW()*0.1, receptorY(), noteSize(), 20);
       }
 
-      // notes
+      // 繪製 notes
       active.forEach(n => {
         const y = (now - n.spawnTime) * speed;
         ctx.fillStyle = '#0f0';
         ctx.fillRect(n.lane * laneW() + laneW()*0.1, y, noteSize(), noteSize());
       });
 
-      // 移除超過底部
+      // 移除落出畫面之外的 notes
       active = active.filter(n => {
         const y = (now - n.spawnTime) * speed;
-        return y < ch + noteSize();
+        if (y > ch + noteSize()) {
+          pushFeedback('Miss', n.lane);
+          return false;
+        }
+        return true;
       });
 
+      // 繪製分數
+      ctx.fillStyle = '#fff';
+      ctx.font = '24px sans-serif';
+      ctx.fillText(`Score: ${score}`, 20, 40);
+
+      // 繪製回饋文字
+      feedbacks = feedbacks.filter(f => performance.now() - f.t < 1000)
+        .map(f => {
+          const elapsed = performance.now() - f.t;
+          const alpha = 1 - elapsed / 1000;
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = f.text === 'Perfect' ? '#ffd700' :
+                          f.text === 'Good'    ? '#00f' :
+                                                '#f00';
+          ctx.font = '28px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(f.text, f.x, f.y - elapsed * 0.05);
+          ctx.globalAlpha = 1;
+          return f;
+        });
+
+      // 換一幀
       if (playing && (active.length > 0 || notes.some(n => !n.added))){
         requestAnimationFrame(loop);
       }
