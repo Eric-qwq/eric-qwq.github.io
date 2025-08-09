@@ -1,334 +1,225 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>下落式節奏遊戲</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>手機下落節奏遊戲</title>
 <style>
-body {
-margin: 0;
-padding: 0;
-background-color: #000;
-color: #fff;
-font-family: sans-serif;
-text-align: center;
-overflow: hidden;
-}
-#game-container {
-position: relative;
-width: 100vw;
-height: 100vh;
-max-width: 450px; /* 限制最大寬度以適應手機螢幕 /
-margin: 0 auto;
-background-color: #111;
-overflow: hidden;
-}
-#note-lanes {
-position: absolute;
-bottom: 0;
-width: 100%;
-height: 100%;
-display: flex;
-}
-.lane {
-flex-grow: 1;
-border-left: 1px solid #444;
-border-right: 1px solid #444;
-box-sizing: border-box;
-position: relative;
-}
-.note {
-position: absolute;
-width: 100%;
-height: 25px;
-background-color: #3f51b5; / 藍色音符 */
-will-change: top;
-}
-#judgement-line {
-position: absolute;
-bottom: 15%;
-width: 100%;
-height: 5px;
-background-color: rgba(255, 255, 255, 0.8);
-box-shadow: 0px 0px 10px 3px #fff;
-}
-.judgement-feedback {
-position: absolute;
-left: 50%;
-top: 40%;
-transform: translateX(-50%);
-font-size: 3em;
-font-weight: bold;
-opacity: 0;
-animation: fade-out 0.5s forwards;
-}
-@keyframes fade-out {
-from { opacity: 1; transform: translateX(-50%) scale(1.2); }
-to { opacity: 0; transform: translateX(-50%) scale(1); }
-}
-#score-display {
-position: absolute;
-top: 20px;
-left: 50%;
-transform: translateX(-50%);
-font-size: 2em;
-z-index: 10;
-}
-#start-screen, #end-screen {
-position: absolute;
-top: 0;
-left: 0;
-width: 100%;
-height: 100%;
-background-color: rgba(0, 0, 0, 0.85);
-display: flex;
-flex-direction: column;
-justify-content: center;
-align-items: center;
-z-index: 20;
-}
-#start-screen h1, #end-screen h1 {
-font-size: 2.5em;
-margin-bottom: 20px;
-}
-#end-screen p {
-font-size: 1.5em;
-margin-bottom: 30px;
-}
-.button {
-padding: 15px 30px;
-font-size: 1.5em;
-background-color: #3f51b5;
-color: white;
-border: none;
-border-radius: 10px;
-cursor: pointer;
-transition: background-color 0.3s;
-}
-.button:hover {
-background-color: #303f9f;
-}
+  html, body {
+    margin:0; padding:0; height:100%; background:#111; color:#eee; font-family: "Noto Sans TC", sans-serif;
+    overflow:hidden; -webkit-user-select:none; user-select:none;
+  }
+  #game {
+    position: relative; width: 100vw; height: 100vh; background: #222; overflow: hidden;
+  }
+  #lanes {
+    position: absolute; bottom: 0; width: 100%; height: 180px;
+    display: flex; justify-content: space-around; align-items: center;
+    border-top: 3px solid #444;
+  }
+  .lane {
+    width: 22%; height: 180px; background: #333; border-radius: 14px;
+    border: 2px solid #555; box-sizing: border-box; position: relative;
+    user-select:none;
+  }
+  .lane.active {
+    border-color: #0f0;
+    box-shadow: 0 0 12px #0f0;
+  }
+  .note {
+    width: 60px; height: 60px; background: #08f; border-radius: 50%;
+    position: absolute; left: 50%; transform: translateX(-50%);
+    box-shadow: 0 0 15px #08f;
+    bottom: 180px; /* 初始在最上方，往下掉 */
+    transition: bottom 0.05s linear;
+  }
+  .note.hit {
+    background: #0f0 !important;
+    box-shadow: 0 0 25px #0f0 !important;
+    transition: none;
+  }
+  #score {
+    position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+    font-size: 24px; letter-spacing: 3px;
+  }
+  #info {
+    position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
+    font-size: 14px; color: #aaa; max-width: 90vw; text-align: center;
+    user-select:none;
+  }
 </style>
 </head>
 <body>
-<div id="game-container">
-<div id="start-screen">
-<h1>下落式節奏遊戲</h1>
-<button id="start-button" class="button">開始遊戲</button>
+<div id="game">
+  <div id="score">分數: 0</div>
+  <div id="info">首次點擊開始遊戲，依節奏點擊下方方塊</div>
+  <div id="lanes">
+    <div class="lane" data-index="0"></div>
+    <div class="lane" data-index="1"></div>
+    <div class="lane" data-index="2"></div>
+    <div class="lane" data-index="3"></div>
+  </div>
 </div>
-<div id="end-screen" style="display: none;">
-<h1>遊戲結束</h1>
-<p id="final-score"></p>
-<button id="restart-button" class="button">重新開始</button>
-</div>
-<div id="score-display">Score: 0</div>
-<div id="note-lanes">
-    <div class="lane" id="lane-0"></div>
-    <div class="lane" id="lane-1"></div>
-    <div class="lane" id="lane-2"></div>
-    <div class="lane" id="lane-3"></div>
-</div>
-<div id="judgement-line"></div>
 
-</div>
-<audio id="music" src="https://dl.dropboxusercontent.com/s/g8a13aa3zsd4i24/sample-music.mp3" preload="auto"></audio>
+<!-- 音樂：用免費授權BGM -->
+<audio id="bgm" src="https://cdn.jsdelivr.net/gh/jacksin123/mp3cdn@main/bgm.mp3" preload="auto"></audio>
+<audio id="hitSound" src="https://cdn.jsdelivr.net/gh/jacksin123/mp3cdn@main/hit.wav" preload="auto"></audio>
+<audio id="missSound" src="https://cdn.jsdelivr.net/gh/jacksin123/mp3cdn@main/miss.wav" preload="auto"></audio>
+
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-const gameContainer = document.getElementById('game-container');
-const lanes = document.querySelectorAll('.lane');
-const judgementLine = document.getElementById('judgement-line');
-const scoreDisplay = document.getElementById('score-display');
-const startScreen = document.getElementById('start-screen');
-const endScreen = document.getElementById('end-screen');
-const startButton = document.getElementById('start-button');
-const restartButton = document.getElementById('restart-button');
-const finalScoreDisplay = document.getElementById('final-score');
-const music = document.getElementById('music');
-const NOTE_SPEED = 350; // pixels per second
-const JUDGEMENT_OFFSET_MS = 100; // ms, a larger value means you need to tap earlier
+(() => {
+  const lanes = [...document.querySelectorAll('.lane')];
+  const scoreEl = document.getElementById('score');
+  const infoEl = document.getElementById('info');
+  const bgm = document.getElementById('bgm');
+  const hitSound = document.getElementById('hitSound');
+  const missSound = document.getElementById('missSound');
 
-// Beatmap: time (in seconds) and the lane (0-3)
-const beatmap = [
-    { time: 1.0, lane: 0 }, { time: 1.5, lane: 1 }, { time: 2.0, lane: 2 }, { time: 2.5, lane: 3 },
-    { time: 3.2, lane: 0 }, { time: 3.4, lane: 2 }, { time: 4.0, lane: 1 }, { time: 4.5, lane: 3 },
-    { time: 5.0, lane: 0 }, { time: 5.0, lane: 2 }, { time: 5.8, lane: 1 }, { time: 6.3, lane: 3 },
-    { time: 7.0, lane: 0 }, { time: 7.2, lane: 1 }, { time: 7.4, lane: 2 }, { time: 7.6, lane: 3 },
-    { time: 8.5, lane: 0 }, { time: 8.5, lane: 3 }, { time: 9.3, lane: 1 }, { time: 9.3, lane: 2 },
-    { time: 10.1, lane: 0 }, { time: 10.6, lane: 1 }, { time: 11.1, lane: 2 }, { time: 11.6, lane: 3 },
-    { time: 12.0, lane: 0 }, { time: 12.2, lane: 2 }, { time: 12.4, lane: 1 }, { time: 12.6, lane: 3 },
-    { time: 13.5, lane: 0 }, { time: 13.5, lane: 1 }, { time: 14.0, lane: 2 }, { time: 14.0, lane: 3 },
-    { time: 15.0, lane: 0 }, { time: 15.25, lane: 1 }, { time: 15.5, lane: 2 }, { time: 15.75, lane: 3 },
-    { time: 16.0, lane: 0 }, { time: 16.25, lane: 1 }, { time: 16.5, lane: 2 }, { time: 16.75, lane: 3 },
-    // ...add more notes for the rest of the song
-];
+  let notes = [];
+  let score = 0;
+  let gameStart = false;
+  const hitLineY = 20;  // 距離底部擊打區高度
+  const hitTolerance = 40; // 可接受誤差像素
 
-let score = 0;
-let noteIndex = 0;
-let activeNotes = [];
-let gameStartTime = 0;
-let animationFrameId;
-let isGameRunning = false;
+  // 節奏資料（毫秒，lane 0~3）
+  const beatMap = [
+    {time: 0, lane:0},{time: 500, lane:1},{time: 1000, lane:2},{time:1500, lane:3},
+    {time: 2000, lane:0},{time: 2500, lane:1},{time: 3000, lane:2},{time: 3500, lane:3},
+    {time: 4000, lane:0},{time: 4500, lane:1},{time: 5000, lane:2},{time: 5500, lane:3},
+    {time: 6000, lane:0},{time: 6500, lane:1},{time: 7000, lane:2},{time: 7500, lane:3},
+    {time: 8000, lane:0},{time: 8500, lane:1},{time: 9000, lane:2},{time: 9500, lane:3},
+  ];
 
-function createNote(laneIndex) {
-    const note = document.createElement(&#39;div&#39;);
-    note.className = &#39;note&#39;;
-    note.style.top = &#39;-25px&#39;; // Start above the screen
-    lanes[laneIndex].appendChild(note);
+  // 音符掉落速度 (像素/ms)
+  const speed = 0.25;
+  let startTime = null;
 
-    const spawnTime = music.currentTime;
-    const noteData = {
-        element: note,
-        lane: laneIndex,
-        spawnTime: spawnTime,
-        targetTime: spawnTime + (gameContainer.clientHeight / NOTE_SPEED)
-    };
-    activeNotes.push(noteData);
-}
+  function createNote(lane, spawnTime) {
+    const laneDiv = lanes[lane];
+    const note = document.createElement('div');
+    note.classList.add('note');
+    laneDiv.appendChild(note);
+    return {elem: note, lane, spawnTime, y: 180, hit:false};
+  }
 
-function updateGame() {
-    if (!isGameRunning) return;
-
-    const currentTime = music.currentTime;
-    
-    // Spawn new notes based on beatmap
-    while (noteIndex &lt; beatmap.length &amp;&amp; currentTime &gt;= beatmap[noteIndex].time - (gameContainer.clientHeight / NOTE_SPEED)) {
-        const noteInfo = beatmap[noteIndex];
-        createNote(noteInfo.lane);
-        noteIndex++;
-    }
-
-    const judgementLineY = judgementLine.offsetTop;
-
-    // Move active notes and check for misses
-    for (let i = activeNotes.length - 1; i &gt;= 0; i--) {
-        const noteData = activeNotes[i];
-        const elapsedTime = currentTime - noteData.spawnTime;
-        const newY = elapsedTime * NOTE_SPEED;
-
-        noteData.element.style.top = `${newY}px`;
-
-        // Check for miss (note passed the judgement line)
-        if (newY &gt; judgementLineY + 20) {
-            lanes[noteData.lane].removeChild(noteData.element);
-            activeNotes.splice(i, 1);
-            showJudgementFeedback(&#39;Miss&#39;);
-        }
-    }
-
-    if (music.ended) {
-        endGame();
-    } else {
-        animationFrameId = requestAnimationFrame(updateGame);
-    }
-}
-
-function handleInput(laneIndex) {
-    if (!isGameRunning) return;
-
-    const judgementLineY = judgementLine.offsetTop;
-    let bestCandidate = null;
-    let minDistance = Infinity;
-
-    // Find the closest note in the tapped lane
-    for (const noteData of activeNotes) {
-        if (noteData.lane === laneIndex) {
-            const noteY = noteData.element.offsetTop + (noteData.element.clientHeight / 2);
-            const distance = Math.abs(noteY - judgementLineY);
-            
-            if (distance &lt; minDistance) {
-                minDistance = distance;
-                bestCandidate = noteData;
-            }
-        }
-    }
-    
-    if (bestCandidate) {
-        const distance = Math.abs(bestCandidate.element.offsetTop + (bestCandidate.element.clientHeight / 2) - judgementLineY);
-        
-        let judgement = &#39;&#39;;
-        if (distance &lt; 30) {
-            judgement = &#39;Perfect&#39;;
-            score += 100;
-        } else if (distance &lt; 60) {
-            judgement = &#39;Good&#39;;
-            score += 50;
-        } else {
-            judgement = &#39;Bad&#39;;
-        }
-        
-        showJudgementFeedback(judgement);
-        scoreDisplay.textContent = `Score: ${score}`;
-        
-        // Remove the hit note
-        bestCandidate.element.remove();
-        activeNotes = activeNotes.filter(n =&gt; n !== bestCandidate);
-    }
-}
-
-function showJudgementFeedback(text) {
-    const feedback = document.createElement(&#39;div&#39;);
-    feedback.className = &#39;judgement-feedback&#39;;
-    feedback.textContent = text;
-
-    if (text === &#39;Perfect&#39;) feedback.style.color = &#39;#4caf50&#39;; // Green
-    else if (text === &#39;Good&#39;) feedback.style.color = &#39;#ffeb3b&#39;; // Yellow
-    else if (text === &#39;Bad&#39;) feedback.style.color = &#39;#f44336&#39;; // Red
-    else if (text === &#39;Miss&#39;) feedback.style.color = &#39;#9e9e9e&#39;; // Grey
-
-    gameContainer.appendChild(feedback);
-    
-    setTimeout(() =&gt; {
-        feedback.remove();
-    }, 500);
-}
-
-function resetGame() {
+  function startGame() {
+    if (gameStart) return;
+    gameStart = true;
     score = 0;
-    noteIndex = 0;
-    activeNotes.forEach(noteData =&gt; noteData.element.remove());
-    activeNotes = [];
-    scoreDisplay.textContent = &#39;Score: 0&#39;;
-    music.currentTime = 0;
-    isGameRunning = false;
-    cancelAnimationFrame(animationFrameId);
-}
+    scoreEl.textContent = '分數: 0';
+    infoEl.textContent = '遊戲進行中...';
+    startTime = null;
+    notes.forEach(n => n.elem.remove());
+    notes = [];
 
-function startGame() {
-    resetGame();
-    startScreen.style.display = &#39;none&#39;;
-    endScreen.style.display = &#39;none&#39;;
-    isGameRunning = true;
-    music.play();
-    gameStartTime = Date.now();
-    updateGame();
-}
+    // 深複製節奏陣列以免破壞原始資料
+    upcomingBeats = beatMap.map(b => ({...b}));
 
-function endGame() {
-    isGameRunning = false;
-    cancelAnimationFrame(animationFrameId);
-    finalScoreDisplay.textContent = `最終得分: ${score}`;
-    endScreen.style.display = &#39;flex&#39;;
-}
+    bgm.currentTime = 0;
+    bgm.play();
+    requestAnimationFrame(gameLoop);
+  }
 
-// Event Listeners
-startButton.addEventListener(&#39;click&#39;, startGame);
-restartButton.addEventListener(&#39;click&#39;, startGame);
+  let upcomingBeats = [];
 
-// Setup input listeners for each lane
-lanes.forEach((lane, index) =&gt; {
-    const laneIndex = index;
-    // For mobile touch
-    lane.addEventListener(&#39;touchstart&#39;, (e) =&gt; {
-        e.preventDefault(); // Prevent scrolling and other default behaviors
-        handleInput(laneIndex);
-    }, { passive: false });
-    // For computer mouse click
-    lane.addEventListener(&#39;mousedown&#39;, () =&gt; {
-        handleInput(laneIndex);
+  function gameLoop(timestamp) {
+    if (!startTime) startTime = timestamp;
+    const elapsed = timestamp - startTime;
+
+    // 產生音符 (提前2秒生成)
+    while (upcomingBeats.length > 0 && upcomingBeats[0].time <= elapsed + 2000) {
+      const beat = upcomingBeats.shift();
+      notes.push(createNote(beat.lane, beat.time));
+    }
+
+    // 更新音符位置
+    notes.forEach(note => {
+      if (note.hit) return;
+      note.y = 180 - (elapsed - note.spawnTime) * speed;
+      if (note.y < -60) { // 跳過擊打區，視為miss
+        note.hit = true;
+        note.elem.remove();
+        missSound.currentTime = 0;
+        missSound.play();
+      } else {
+        note.elem.style.bottom = note.y + 'px';
+      }
     });
-});
 
-});
+    // 過濾已處理音符
+    notes = notes.filter(n => !n.hit);
+
+    if (!bgm.paused) {
+      requestAnimationFrame(gameLoop);
+    } else {
+      infoEl.textContent = '遊戲結束！分數：' + score;
+      gameStart = false;
+    }
+  }
+
+  // 判定擊打音符
+  function hitLane(lane) {
+    if (!gameStart) return;
+    lanes.forEach((l, i) => {
+      if (i === lane) {
+        l.classList.add('active');
+        setTimeout(() => l.classList.remove('active'), 150);
+      }
+    });
+
+    // 找最近且未被擊中的音符
+    const candidates = notes.filter(n => n.lane === lane && !n.hit);
+    if (candidates.length === 0) {
+      missSound.currentTime = 0;
+      missSound.play();
+      return;
+    }
+
+    // 找距離擊打線最近的音符
+    let nearest = candidates.reduce((prev, curr) => {
+      return Math.abs(curr.y - hitLineY) < Math.abs(prev.y - hitLineY) ? curr : prev;
+    });
+
+    // 判斷是否在可接受範圍內
+    if (Math.abs(nearest.y - hitLineY) <= hitTolerance) {
+      nearest.hit = true;
+      nearest.elem.classList.add('hit');
+      score++;
+      scoreEl.textContent = '分數: ' + score;
+      hitSound.currentTime = 0;
+      hitSound.play();
+      setTimeout(() => nearest.elem.remove(), 300);
+    } else {
+      missSound.currentTime = 0;
+      missSound.play();
+    }
+  }
+
+  // 螢幕觸控判斷擊打哪個 lane
+  document.getElementById('game').addEventListener('touchstart', e => {
+    e.preventDefault();
+    for (let touch of e.touches) {
+      const x = touch.clientX;
+      const laneWidth = window.innerWidth / lanes.length;
+      const laneIndex = Math.floor(x / laneWidth);
+      hitLane(laneIndex);
+    }
+  }, {passive:false});
+
+  // 點擊事件（手機測試用）
+  document.getElementById('game').addEventListener('click', e => {
+    const x = e.clientX;
+    const laneWidth = window.innerWidth / lanes.length;
+    const laneIndex = Math.floor(x / laneWidth);
+    hitLane(laneIndex);
+  });
+
+  // 點擊頁面第一次啟動遊戲並播放音樂（因手機限制需要互動觸發）
+  document.body.addEventListener('click', () => {
+    if (!gameStart) startGame();
+  }, {once:true});
+
+})();
 </script>
 </body>
 </html>
