@@ -2,38 +2,60 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>經典乒乓球遊戲 (Pong)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>乒乓球遊戲 (手機版)</title>
     <style>
+        /* 防止頁面滾動和奇怪的觸控效果 */
+        * {
+            -webkit-user-select: none; /* Safari */
+            -ms-user-select: none; /* IE 10+ */
+            user-select: none; 
+            touch-action: none; /* 禁用觸摸導致的瀏覽器行為，如滾動縮放 */
+        }
         body {
             background-color: #111;
             color: #eee;
-            font-family: 'Courier New', Courier, monospace;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow: hidden; /* 隱藏滾動條 */
         }
         h1 {
-            margin-bottom: 10px;
+            font-size: 5vw;
+            max-font-size: 24px;
+            margin-bottom: 5px;
+            text-align: center;
         }
         p {
+            font-size: 3vw;
+            max-font-size: 16px;
             margin-top: 0;
-            font-size: 1em;
+            margin-bottom: 15px;
+            text-align: center;
         }
         canvas {
             background-color: #000;
             border: 2px solid #eee;
+            width: 100%;
+            max-width: 800px; /* 在大螢幕上的最大寬度 */
+            aspect-ratio: 2 / 1; /* 保持畫布長寬比 */
+            touch-action: none;
         }
         #restartBtn {
             margin-top: 20px;
-            padding: 10px 20px;
-            font-size: 1em;
+            padding: 12px 24px;
+            font-size: 4vw;
+            max-font-size: 18px;
             background-color: #333;
             color: #eee;
             border: 2px solid #eee;
+            border-radius: 8px;
             cursor: pointer;
             display: none; /* 遊戲結束前隱藏 */
         }
@@ -44,8 +66,8 @@
     </style>
 </head>
 <body>
-    <h1>經典乒乓球遊戲 (Pong)</h1>
-    <p>用滑鼠上下移動你的球拍，先得到 5 分者獲勝！</p>
+    <h1>乒乓球遊戲</h1>
+    <p>用滑鼠或手指觸控上下移動你的球拍，先得到 5 分者獲勝！</p>
     <canvas id="pongCanvas"></canvas>
     <button id="restartBtn">重新開始</button>
 
@@ -54,43 +76,52 @@
         const context = canvas.getContext('2d');
         const restartBtn = document.getElementById('restartBtn');
 
-        // 設定畫布尺寸
-        canvas.width = 800;
-        canvas.height = 400;
-
         const WINNING_SCORE = 5;
         let gameOver = false;
 
-        // 球拍物件
-        const paddleWidth = 10, paddleHeight = 80;
-        const player = {
-            x: 10,
-            y: canvas.height / 2 - paddleHeight / 2,
-            width: paddleWidth,
-            height: paddleHeight,
-            color: 'white',
-            score: 0
-        };
-        const computer = {
-            x: canvas.width - paddleWidth - 10,
-            y: canvas.height / 2 - paddleHeight / 2,
-            width: paddleWidth,
-            height: paddleHeight,
-            color: 'white',
-            score: 0,
-            speed: 4 // AI的反應速度
-        };
+        // 遊戲物件，尺寸將根據畫布大小動態計算
+        let paddleWidth, paddleHeight, ballRadius;
+        
+        const player = { x: 0, y: 0, width: 0, height: 0, color: 'white', score: 0 };
+        const computer = { x: 0, y: 0, width: 0, height: 0, color: 'white', score: 0 };
+        const ball = { x: 0, y: 0, radius: 0, speed: 0, velocityX: 0, velocityY: 0, color: 'white' };
 
-        // 球的物件
-        const ball = {
-            x: canvas.width / 2,
-            y: canvas.height / 2,
-            radius: 8,
-            speed: 5,
-            velocityX: 5,
-            velocityY: 5,
-            color: 'white'
-        };
+        // 根據畫布大小重新計算所有物件的尺寸和位置
+        function resizeAndPositionElements() {
+            // 設定內部解析度
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+
+            // 相對尺寸
+            paddleWidth = canvas.width * 0.015;
+            paddleHeight = canvas.height * 0.2;
+            ballRadius = Math.min(canvas.width, canvas.height) * 0.02;
+
+            // 玩家球拍
+            player.width = paddleWidth;
+            player.height = paddleHeight;
+            player.x = canvas.width * 0.02; // 離左邊界2%
+            player.y = canvas.height / 2 - paddleHeight / 2;
+
+            // 電腦球拍
+            computer.width = paddleWidth;
+            computer.height = paddleHeight;
+            computer.x = canvas.width - paddleWidth - (canvas.width * 0.02);
+            computer.y = canvas.height / 2 - paddleHeight / 2;
+            
+            // 重置球的位置
+            resetBall();
+        }
+
+        // 球的位置重置
+        function resetBall() {
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height / 2;
+            ball.radius = Math.min(canvas.width, canvas.height) * 0.02;
+            ball.speed = canvas.width * 0.007; // 速度也設為相對值
+            ball.velocityX = (Math.random() > 0.5 ? 1 : -1) * ball.speed;
+            ball.velocityY = (Math.random() > 0.5 ? 1 : -1) * ball.speed;
+        }
 
         // 繪製矩形 (用於球拍)
         function drawRect(x, y, w, h, color) {
@@ -108,82 +139,70 @@
         }
 
         // 繪製文字 (用於分數)
-        function drawText(text, x, y, color) {
+        function drawText(text, x, y, color, size) {
             context.fillStyle = color;
-            context.font = '45px "Courier New"';
+            context.font = `${size}px "Courier New", monospace`;
             context.fillText(text, x, y);
         }
 
         // 繪製中間的虛線網
         function drawNet() {
-            for (let i = 0; i < canvas.height; i += 15) {
-                drawRect(canvas.width / 2 - 1, i, 2, 10, 'grey');
+            for (let i = 0; i < canvas.height; i += (canvas.height / 20)) {
+                drawRect(canvas.width / 2 - 1, i, 2, canvas.height / 40, 'grey');
             }
         }
         
-        // 球的位置重置
-        function resetBall() {
-            ball.x = canvas.width / 2;
-            ball.y = canvas.height / 2;
-            ball.speed = 5;
-            // 隨機決定發球方向
-            ball.velocityX = (Math.random() > 0.5 ? 1 : -1) * 5;
-            ball.velocityY = (Math.random() > 0.5 ? 1 : -1) * 5;
-        }
-
         // 碰撞偵測
         function collision(b, p) {
-            b.top = b.y - b.radius;
-            b.bottom = b.y + b.radius;
-            b.left = b.x - b.radius;
-            b.right = b.x + b.radius;
+            return b.x + b.radius > p.x && b.x - b.radius < p.x + p.width &&
+                   b.y + b.radius > p.y && b.y - b.radius < p.y + p.height;
+        }
 
-            p.top = p.y;
-            p.bottom = p.y + p.height;
-            p.left = p.x;
-            p.right = p.x + p.width;
+        // 控制玩家球拍的移動
+        function movePaddle(event) {
+            event.preventDefault(); // 防止頁面滾動
+            let rect = canvas.getBoundingClientRect();
+            let newY;
 
-            return b.right > p.left && b.bottom > p.top && b.left < p.right && b.top < p.bottom;
+            if (event.type === 'touchmove' || event.type === 'touchstart') {
+                newY = event.touches[0].clientY - rect.top;
+            } else if (event.type === 'mousemove') {
+                newY = event.clientY - rect.top;
+            }
+
+            player.y = newY - player.height / 2;
+            
+            // 防止球拍移出畫布
+            if (player.y < 0) player.y = 0;
+            if (player.y + player.height > canvas.height) player.y = canvas.height - player.height;
         }
 
         // 更新遊戲狀態：移動、碰撞、計分等
         function update() {
             if (gameOver) return;
 
-            // 移動球
             ball.x += ball.velocityX;
             ball.y += ball.velocityY;
 
-            // AI 控制電腦球拍
-            // 讓電腦球拍的中心位置追蹤球的y位置，乘以一個係數來控制難度
+            // AI 控制
             computer.y += (ball.y - (computer.y + computer.height / 2)) * 0.1;
 
-            // 球與上下牆壁的碰撞
+            // 碰撞牆壁
             if (ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) {
                 ball.velocityY = -ball.velocityY;
             }
 
-            // 判斷是玩家還是電腦的球拍
             let currentPaddle = (ball.x < canvas.width / 2) ? player : computer;
-
-            // 球與球拍的碰撞
             if (collision(ball, currentPaddle)) {
-                // 球在哪個點撞到球拍 (-1 to 1)
                 let collidePoint = (ball.y - (currentPaddle.y + currentPaddle.height / 2)) / (currentPaddle.height / 2);
-                
-                // 根據撞擊點計算反彈角度
                 let angleRad = (Math.PI / 4) * collidePoint;
-                
-                // 改變球的速度方向
                 let direction = (ball.x < canvas.width / 2) ? 1 : -1;
                 ball.velocityX = direction * ball.speed * Math.cos(angleRad);
                 ball.velocityY = ball.speed * Math.sin(angleRad);
-                
-                // 每次撞擊後增加球速，增加遊戲刺激性
-                ball.speed += 0.3;
+                ball.speed += 0.2; // 每次撞擊後增加球速
             }
             
-            // 計分邏輯
+            // 計分
             if (ball.x - ball.radius < 0) {
                 computer.score++;
                 resetBall();
@@ -192,8 +211,7 @@
                 resetBall();
             }
 
-            // 檢查勝利條件
-            if(player.score === WINNING_SCORE || computer.score === WINNING_SCORE){
+            if (player.score === WINNING_SCORE || computer.score === WINNING_SCORE) {
                 gameOver = true;
                 restartBtn.style.display = 'block';
             }
@@ -201,30 +219,27 @@
 
         // 渲染畫面
         function render() {
-            // 清空畫布
             drawRect(0, 0, canvas.width, canvas.height, '#000');
             
-            // 繪製分數
-            drawText(player.score, canvas.width / 4, canvas.height / 5, 'white');
-            drawText(computer.score, 3 * canvas.width / 4, canvas.height / 5, 'white');
+            const scoreSize = canvas.height * 0.15;
+            drawText(player.score, canvas.width / 4, canvas.height / 5, 'white', scoreSize);
+            drawText(computer.score, 3 * canvas.width / 4, canvas.height / 5, 'white', scoreSize);
 
-            // 繪製中間的網
             drawNet();
 
-            // 繪製球拍
             drawRect(player.x, player.y, player.width, player.height, player.color);
             drawRect(computer.x, computer.y, computer.width, computer.height, computer.color);
-
-            // 繪製球
-            drawCircle(ball.x, ball.y, ball.radius, ball.color);
             
-            // 顯示結束畫面
-            if(gameOver){
+            if(!gameOver) {
+                drawCircle(ball.x, ball.y, ball.radius, ball.color);
+            }
+            
+            if (gameOver) {
                 let winnerText = (player.score === WINNING_SCORE) ? "你贏了！" : "電腦獲勝！";
                 context.fillStyle = "yellow";
-                context.font = '50px "Courier New"';
+                context.font = `bold ${canvas.height * 0.12}px sans-serif`;
                 context.textAlign = 'center';
-                context.fillText(winnerText, canvas.width/2, canvas.height/2);
+                context.fillText(winnerText, canvas.width / 2, canvas.height / 2);
             }
         }
 
@@ -232,31 +247,37 @@
         function gameLoop() {
             update();
             render();
-            requestAnimationFrame(gameLoop); // 持續呼叫，形成動畫效果
+            requestAnimationFrame(gameLoop);
         }
 
-        // 滑鼠移動事件，控制玩家球拍
-        canvas.addEventListener('mousemove', function(event) {
-            let rect = canvas.getBoundingClientRect();
-            player.y = event.clientY - rect.top - player.height / 2;
+        // 初始化與事件監聽
+        function initialize() {
+            resizeAndPositionElements();
             
-            // 防止球拍移出畫布
-            if(player.y < 0) player.y = 0;
-            if(player.y + player.height > canvas.height) player.y = canvas.height - player.height;
-        });
+            // 監聽視窗大小變化
+            window.addEventListener('resize', resizeAndPositionElements);
+            
+            // 滑鼠控制
+            canvas.addEventListener('mousemove', movePaddle);
 
-        // 重新開始按鈕事件
-        restartBtn.addEventListener('click', function(){
-            player.score = 0;
-            computer.score = 0;
-            gameOver = false;
-            restartBtn.style.display = 'none';
-            context.textAlign = 'start'; // 將文字對齊方式重置
-            resetBall();
-        });
+            // 觸控控制
+            canvas.addEventListener('touchstart', movePaddle);
+            canvas.addEventListener('touchmove', movePaddle);
 
-        // 啟動遊戲
-        requestAnimationFrame(gameLoop);
+            // 重新開始按鈕
+            restartBtn.addEventListener('click', () => {
+                player.score = 0;
+                computer.score = 0;
+                gameOver = false;
+                restartBtn.style.display = 'none';
+                context.textAlign = 'start'; // 重置文字對齊
+                resizeAndPositionElements();
+            });
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        initialize();
 
     </script>
 </body>
