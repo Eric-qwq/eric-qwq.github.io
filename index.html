@@ -3,293 +3,261 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>多益(TOEIC)英文小遊戲</title>
+    <title>經典乒乓球遊戲 (Pong)</title>
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background-color: #f0f2f5;
-            color: #1c1e21;
+            background-color: #111;
+            color: #eee;
+            font-family: 'Courier New', Courier, monospace;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-        .game-container {
-            background-color: #ffffff;
-            padding: 25px 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 600px;
-            text-align: center;
         }
         h1 {
-            font-size: 24px;
-            color: #0056b3;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
-        .progress-container {
-            display: flex;
-            justify-content: space-between;
-            font-size: 16px;
-            margin-bottom: 20px;
-            color: #606770;
+        p {
+            margin-top: 0;
+            font-size: 1em;
         }
-        #question-text {
-            font-size: 20px;
-            margin-bottom: 25px;
-            line-height: 1.6;
-            color: #1d2129;
-            min-height: 60px;
+        canvas {
+            background-color: #000;
+            border: 2px solid #eee;
         }
-        .options-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-        .option-btn {
-            background-color: #e7f3ff;
-            border: 2px solid #cce0f5;
-            border-radius: 8px;
-            padding: 15px;
-            font-size: 18px;
-            cursor: pointer;
-            transition: background-color 0.2s, border-color 0.2s;
-            width: 100%;
-        }
-        .option-btn:hover:not(:disabled) {
-            background-color: #dbeaff;
-            border-color: #a9c7e8;
-        }
-        .option-btn.correct {
-            background-color: #d4edda;
-            border-color: #c3e6cb;
-            color: #155724;
-            font-weight: bold;
-        }
-        .option-btn.wrong {
-            background-color: #f8d7da;
-            border-color: #f5c6cb;
-            color: #721c24;
-        }
-        .option-btn:disabled {
-            cursor: not-allowed;
-        }
-        #feedback-area {
+        #restartBtn {
             margin-top: 20px;
-            font-size: 16px;
-            min-height: 50px;
-        }
-        #feedback-area .translation {
-            color: #606770;
-            margin-top: 8px;
-        }
-        #next-btn {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 12px 30px;
-            font-size: 18px;
+            padding: 10px 20px;
+            font-size: 1em;
+            background-color: #333;
+            color: #eee;
+            border: 2px solid #eee;
             cursor: pointer;
-            margin-top: 15px;
-            display: none;
-            width: 50%;
-            transition: background-color 0.2s;
+            display: none; /* 遊戲結束前隱藏 */
         }
-        #next-btn:hover {
-            background-color: #0056b3;
-        }
-        .final-score {
-            font-size: 22px;
-            font-weight: bold;
-            color: #1d2129;
+        #restartBtn:hover {
+            background-color: #eee;
+            color: #111;
         }
     </style>
 </head>
 <body>
-
-    <div class="game-container">
-        <h1 id="game-title">多益(TOEIC)英文挑戰</h1>
-        <div class="progress-container">
-            <span id="question-counter"></span>
-            <span id="score">分數: 0</span>
-        </div>
-        <div id="question-area">
-            <p id="question-text"></p>
-            <div class="options-grid" id="options-container">
-            </div>
-        </div>
-        <div id="feedback-area"></div>
-        <button id="next-btn">下一題</button>
-    </div>
+    <h1>經典乒乓球遊戲 (Pong)</h1>
+    <p>用滑鼠上下移動你的球拍，先得到 5 分者獲勝！</p>
+    <canvas id="pongCanvas"></canvas>
+    <button id="restartBtn">重新開始</button>
 
     <script>
-        const questions = [
-            {
-                question: "The marketing team is responsible ___ developing the new advertising campaign.",
-                options: ["of", "with", "for", "to"],
-                answer: "for",
-                translation: "行銷團隊負責發展新的廣告活動。"
-            },
-            {
-                question: "All employees are required ___ attend the annual safety training session.",
-                options: ["to", "on", "in", "at"],
-                answer: "to",
-                translation: "所有員工都必須參加年度安全訓練課程。"
-            },
-            {
-                question: "This new software is much more ___ than the previous version.",
-                options: ["efficient", "efficiently", "efficiency", "efficious"],
-                answer: "efficient",
-                translation: "這個新軟體比前一個版本效率高得多。"
-            },
-            {
-                question: "Ms. Chen worked ___ on the project and received a bonus for her efforts.",
-                options: ["diligence", "diligent", "diligently", "more diligent"],
-                answer: "diligently",
-                translation: "陳小姐勤奮地投入這個專案，並因此獲得了獎金。"
-            },
-            {
-                question: "___ the heavy rain, the outdoor event had to be postponed.",
-                options: ["Although", "Because", "Despite", "Due to"],
-                answer: "Due to",
-                translation: "由於大雨，戶外活動不得不延期。"
-            },
-            {
-                question: "Please make sure to attach your ___ to the email before sending it.",
-                options: ["resume", "resumes", "resuming", "resumed"],
-                answer: "resume",
-                translation: "寄送郵件前，請確認已附上您的履歷。"
-            },
-            {
-                question: "The company will ___ its new line of products next month.",
-                options: ["launch", "launched", "launching", "launches"],
-                answer: "launch",
-                translation: "該公司將於下個月推出其新系列產品。"
-            },
-            {
-                question: "Customers who purchase more than $100 are ___ for free shipping.",
-                options: ["eligible", "alleviated", "legible", "required"],
-                answer: "eligible",
-                translation: "消費超過100美元的顧客即有資格享受免運費服務。"
-            },
-             {
-                question: "The manager will be unavailable ___ 2 PM and 4 PM for a meeting.",
-                options: ["from", "at", "between", "during"],
-                answer: "between",
-                translation: "經理下午2點到4點之間因會議將無法抽身。"
-            },
-            {
-                question: "You can find more details ___ the product in the instruction manual.",
-                options: ["concerning", "concerned", "concerns", "concern"],
-                answer: "concerning",
-                translation: "您可以在使用說明書中找到更多關於該產品的細節。"
+        const canvas = document.getElementById('pongCanvas');
+        const context = canvas.getContext('2d');
+        const restartBtn = document.getElementById('restartBtn');
+
+        // 設定畫布尺寸
+        canvas.width = 800;
+        canvas.height = 400;
+
+        const WINNING_SCORE = 5;
+        let gameOver = false;
+
+        // 球拍物件
+        const paddleWidth = 10, paddleHeight = 80;
+        const player = {
+            x: 10,
+            y: canvas.height / 2 - paddleHeight / 2,
+            width: paddleWidth,
+            height: paddleHeight,
+            color: 'white',
+            score: 0
+        };
+        const computer = {
+            x: canvas.width - paddleWidth - 10,
+            y: canvas.height / 2 - paddleHeight / 2,
+            width: paddleWidth,
+            height: paddleHeight,
+            color: 'white',
+            score: 0,
+            speed: 4 // AI的反應速度
+        };
+
+        // 球的物件
+        const ball = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            radius: 8,
+            speed: 5,
+            velocityX: 5,
+            velocityY: 5,
+            color: 'white'
+        };
+
+        // 繪製矩形 (用於球拍)
+        function drawRect(x, y, w, h, color) {
+            context.fillStyle = color;
+            context.fillRect(x, y, w, h);
+        }
+
+        // 繪製圓形 (用於球)
+        function drawCircle(x, y, r, color) {
+            context.fillStyle = color;
+            context.beginPath();
+            context.arc(x, y, r, 0, Math.PI * 2, false);
+            context.closePath();
+            context.fill();
+        }
+
+        // 繪製文字 (用於分數)
+        function drawText(text, x, y, color) {
+            context.fillStyle = color;
+            context.font = '45px "Courier New"';
+            context.fillText(text, x, y);
+        }
+
+        // 繪製中間的虛線網
+        function drawNet() {
+            for (let i = 0; i < canvas.height; i += 15) {
+                drawRect(canvas.width / 2 - 1, i, 2, 10, 'grey');
             }
-        ];
-
-        const questionTextEl = document.getElementById('question-text');
-        const optionsContainerEl = document.getElementById('options-container');
-        const feedbackAreaEl = document.getElementById('feedback-area');
-        const nextBtn = document.getElementById('next-btn');
-        const scoreEl = document.getElementById('score');
-        const questionCounterEl = document.getElementById('question-counter');
-        const gameContainer = document.querySelector('.game-container');
-        const questionArea = document.getElementById('question-area');
-        const gameTitle = document.getElementById('game-title');
-
-
-        let currentQuestionIndex = 0;
-        let score = 0;
+        }
         
-        function startGame() {
-            // 隨機打亂題庫順序，讓每次玩的題目順序都不同
-            questions.sort(() => Math.random() - 0.5);
-            currentQuestionIndex = 0;
-            score = 0;
-            scoreEl.textContent = "分數: 0";
-            nextBtn.textContent = "下一題";
-            questionArea.style.display = "block";
-            gameTitle.textContent = "多益(TOEIC)英文挑戰";
-            showQuestion();
+        // 球的位置重置
+        function resetBall() {
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height / 2;
+            ball.speed = 5;
+            // 隨機決定發球方向
+            ball.velocityX = (Math.random() > 0.5 ? 1 : -1) * 5;
+            ball.velocityY = (Math.random() > 0.5 ? 1 : -1) * 5;
         }
 
-        function showQuestion() {
-            resetState();
-            const currentQuestion = questions[currentQuestionIndex];
-            questionCounterEl.textContent = `第 ${currentQuestionIndex + 1} / ${questions.length} 題`;
-            questionTextEl.textContent = currentQuestion.question;
+        // 碰撞偵測
+        function collision(b, p) {
+            b.top = b.y - b.radius;
+            b.bottom = b.y + b.radius;
+            b.left = b.x - b.radius;
+            b.right = b.x + b.radius;
+
+            p.top = p.y;
+            p.bottom = p.y + p.height;
+            p.left = p.x;
+            p.right = p.x + p.width;
+
+            return b.right > p.left && b.bottom > p.top && b.left < p.right && b.top < p.bottom;
+        }
+
+        // 更新遊戲狀態：移動、碰撞、計分等
+        function update() {
+            if (gameOver) return;
+
+            // 移動球
+            ball.x += ball.velocityX;
+            ball.y += ball.velocityY;
+
+            // AI 控制電腦球拍
+            // 讓電腦球拍的中心位置追蹤球的y位置，乘以一個係數來控制難度
+            computer.y += (ball.y - (computer.y + computer.height / 2)) * 0.1;
+
+            // 球與上下牆壁的碰撞
+            if (ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) {
+                ball.velocityY = -ball.velocityY;
+            }
+
+            // 判斷是玩家還是電腦的球拍
+            let currentPaddle = (ball.x < canvas.width / 2) ? player : computer;
+
+            // 球與球拍的碰撞
+            if (collision(ball, currentPaddle)) {
+                // 球在哪個點撞到球拍 (-1 to 1)
+                let collidePoint = (ball.y - (currentPaddle.y + currentPaddle.height / 2)) / (currentPaddle.height / 2);
+                
+                // 根據撞擊點計算反彈角度
+                let angleRad = (Math.PI / 4) * collidePoint;
+                
+                // 改變球的速度方向
+                let direction = (ball.x < canvas.width / 2) ? 1 : -1;
+                ball.velocityX = direction * ball.speed * Math.cos(angleRad);
+                ball.velocityY = ball.speed * Math.sin(angleRad);
+                
+                // 每次撞擊後增加球速，增加遊戲刺激性
+                ball.speed += 0.3;
+            }
             
-            currentQuestion.options.forEach(option => {
-                const button = document.createElement('button');
-                button.textContent = option;
-                button.classList.add('option-btn');
-                button.addEventListener('click', () => selectAnswer(button, option));
-                optionsContainerEl.appendChild(button);
-            });
-        }
+            // 計分邏輯
+            if (ball.x - ball.radius < 0) {
+                computer.score++;
+                resetBall();
+            } else if (ball.x + ball.radius > canvas.width) {
+                player.score++;
+                resetBall();
+            }
 
-        function resetState() {
-            feedbackAreaEl.innerHTML = '';
-            nextBtn.style.display = 'none';
-            while (optionsContainerEl.firstChild) {
-                optionsContainerEl.removeChild(optionsContainerEl.firstChild);
+            // 檢查勝利條件
+            if(player.score === WINNING_SCORE || computer.score === WINNING_SCORE){
+                gameOver = true;
+                restartBtn.style.display = 'block';
             }
         }
 
-        function selectAnswer(button, selectedOption) {
-            const currentQuestion = questions[currentQuestionIndex];
-            const correct = selectedOption === currentQuestion.answer;
+        // 渲染畫面
+        function render() {
+            // 清空畫布
+            drawRect(0, 0, canvas.width, canvas.height, '#000');
             
-            if (correct) {
-                score++;
-                scoreEl.textContent = `分數: ${score}`;
-                button.classList.add('correct');
-                feedbackAreaEl.innerHTML = '<p style="color: #155724; font-weight: bold;">答對了！</p>';
-            } else {
-                button.classList.add('wrong');
-                feedbackAreaEl.innerHTML = `
-                    <p style="color: #721c24; font-weight: bold;">答錯了！正確答案是 "${currentQuestion.answer}"</p>
-                    <p class="translation">${currentQuestion.translation}</p>
-                `;
-            }
+            // 繪製分數
+            drawText(player.score, canvas.width / 4, canvas.height / 5, 'white');
+            drawText(computer.score, 3 * canvas.width / 4, canvas.height / 5, 'white');
 
-            Array.from(optionsContainerEl.children).forEach(btn => {
-                if (btn.textContent === currentQuestion.answer) {
-                    btn.classList.add('correct');
-                }
-                btn.disabled = true;
-            });
+            // 繪製中間的網
+            drawNet();
 
-            if (questions.length > currentQuestionIndex + 1) {
-                nextBtn.style.display = 'block';
-            } else {
-                nextBtn.textContent = "再玩一次";
-                nextBtn.style.display = 'block';
-                showFinalScore();
+            // 繪製球拍
+            drawRect(player.x, player.y, player.width, player.height, player.color);
+            drawRect(computer.x, computer.y, computer.width, computer.height, computer.color);
+
+            // 繪製球
+            drawCircle(ball.x, ball.y, ball.radius, ball.color);
+            
+            // 顯示結束畫面
+            if(gameOver){
+                let winnerText = (player.score === WINNING_SCORE) ? "你贏了！" : "電腦獲勝！";
+                context.fillStyle = "yellow";
+                context.font = '50px "Courier New"';
+                context.textAlign = 'center';
+                context.fillText(winnerText, canvas.width/2, canvas.height/2);
             }
         }
 
-        function showFinalScore() {
-             setTimeout(() => {
-                questionArea.style.display = "none";
-                feedbackAreaEl.innerHTML = `<p class="final-score">遊戲結束！<br>您的總分是 ${score} / ${questions.length}</p>`;
-            }, 500);
+        // 遊戲主循環
+        function gameLoop() {
+            update();
+            render();
+            requestAnimationFrame(gameLoop); // 持續呼叫，形成動畫效果
         }
 
-        nextBtn.addEventListener('click', () => {
-            if (questions.length > currentQuestionIndex + 1) {
-                currentQuestionIndex++;
-                showQuestion();
-            } else {
-                startGame();
-            }
+        // 滑鼠移動事件，控制玩家球拍
+        canvas.addEventListener('mousemove', function(event) {
+            let rect = canvas.getBoundingClientRect();
+            player.y = event.clientY - rect.top - player.height / 2;
+            
+            // 防止球拍移出畫布
+            if(player.y < 0) player.y = 0;
+            if(player.y + player.height > canvas.height) player.y = canvas.height - player.height;
         });
 
-        startGame();
+        // 重新開始按鈕事件
+        restartBtn.addEventListener('click', function(){
+            player.score = 0;
+            computer.score = 0;
+            gameOver = false;
+            restartBtn.style.display = 'none';
+            context.textAlign = 'start'; // 將文字對齊方式重置
+            resetBall();
+        });
+
+        // 啟動遊戲
+        requestAnimationFrame(gameLoop);
+
     </script>
 </body>
 </html>
