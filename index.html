@@ -1,0 +1,55 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flap — Eric-qwq</title>
+<style>html,body{height:100%;margin:0}body{display:flex;align-items:center;justify-content:center;background:#87ceeb;touch-action:none}canvas{background:linear-gradient(#87ceeb,#70c5ce);display:block}</style>
+</head>
+<body>
+<canvas id="c" width="480" height="640"></canvas>
+<script>
+(function(){
+  var c=document.getElementById('c'),x=c.getContext('2d'),W=c.width,H=c.height;
+  var bird={x:60,y:H/2,r:12,vy:0},g=.5,j=-8,pipes=[],t=0,score=0,over=false;
+  function spawn(){var h=80+Math.random()*(H-240);pipes.push({x:W,y:h,w:48,sc:false});}
+  function reset(){bird.y=H/2;bird.vy=0;pipes=[];t=0;score=0;over=false;}
+  function update(){
+    if(!over){
+      bird.vy+=g; bird.y+=bird.vy; t++;
+      if(t%90===0) spawn();
+      for(var i=pipes.length-1;i>=0;i--){
+        pipes[i].x-=3;
+        if(pipes[i].x+pipes[i].w<0){pipes.splice(i,1);continue;}
+        if(!pipes[i].sc && pipes[i].x+pipes[i].w<bird.x){pipes[i].sc=true;score++;}
+        if(bird.x+bird.r>pipes[i].x && bird.x-bird.r<pipes[i].x+pipes[i].w &&
+          (bird.y-bird.r<pipes[i].y || bird.y+bird.r>pipes[i].y+120)) over=true;
+      }
+      if(bird.y-bird.r<0 || bird.y+bird.r>H) over=true;
+    }
+    draw();
+    requestAnimationFrame(update);
+  }
+  function draw(){
+    x.clearRect(0,0,W,H);
+    x.fillStyle='#654'; x.fillRect(0,H-40,W,40);
+    x.fillStyle='yellow'; x.beginPath(); x.arc(bird.x,bird.y,bird.r,0,Math.PI*2); x.fill();
+    x.fillStyle='green';
+    for(var i=0;i<pipes.length;i++){
+      x.fillRect(pipes[i].x,0,pipes[i].w,pipes[i].y);
+      x.fillRect(pipes[i].x,pipes[i].y+120,pipes[i].w,H-pipes[i].y-120);
+    }
+    x.fillStyle='#fff'; x.font='20px sans-serif'; x.fillText('Score: '+score,10,28);
+    if(over){
+      x.fillStyle='rgba(0,0,0,0.6)'; x.fillRect(0,0,W,H);
+      x.fillStyle='#fff'; x.font='28px sans-serif'; x.fillText('GAME OVER',W/2-80,H/2-10);
+      x.font='16px sans-serif'; x.fillText('Tap to restart',W/2-56,H/2+24);
+    }
+  }
+  document.addEventListener('keydown',function(e){ if(e.code==='Space'){ if(over) reset(); bird.vy=j; } });
+  c.addEventListener('touchstart',function(e){ e.preventDefault(); if(over){ reset(); } bird.vy=j; },{passive:false});
+  update();
+})();
+</script>
+</body>
+</html>
