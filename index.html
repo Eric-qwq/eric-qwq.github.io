@@ -1,225 +1,272 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-<title>手機下落節奏遊戲</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>下落式節奏遊戲</title>
 <style>
-  html, body {
-    margin:0; padding:0; height:100%; background:#111; color:#eee; font-family: "Noto Sans TC", sans-serif;
-    overflow:hidden; -webkit-user-select:none; user-select:none;
-  }
-  #game {
-    position: relative; width: 100vw; height: 100vh; background: #222; overflow: hidden;
-  }
-  #lanes {
-    position: absolute; bottom: 0; width: 100%; height: 180px;
-    display: flex; justify-content: space-around; align-items: center;
-    border-top: 3px solid #444;
-  }
-  .lane {
-    width: 22%; height: 180px; background: #333; border-radius: 14px;
-    border: 2px solid #555; box-sizing: border-box; position: relative;
-    user-select:none;
-  }
-  .lane.active {
-    border-color: #0f0;
-    box-shadow: 0 0 12px #0f0;
-  }
-  .note {
-    width: 60px; height: 60px; background: #08f; border-radius: 50%;
-    position: absolute; left: 50%; transform: translateX(-50%);
-    box-shadow: 0 0 15px #08f;
-    bottom: 180px; /* 初始在最上方，往下掉 */
-    transition: bottom 0.05s linear;
-  }
-  .note.hit {
-    background: #0f0 !important;
-    box-shadow: 0 0 25px #0f0 !important;
-    transition: none;
-  }
-  #score {
-    position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-    font-size: 24px; letter-spacing: 3px;
-  }
-  #info {
-    position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
-    font-size: 14px; color: #aaa; max-width: 90vw; text-align: center;
-    user-select:none;
-  }
+body, html {
+margin: 0;
+padding: 0;
+overflow: hidden;
+background-color: #000;
+color: #fff;
+font-family: Arial, sans-serif;
+height: 100%;
+display: flex;
+justify-content: center;
+align-items: center;
+text-align: center;
+}
+#game-container {
+position: relative;
+width: 100vw;
+height: 100vh;
+background-color: #111;
+}
+.track {
+position: absolute;
+bottom: 0;
+width: 25%;
+height: 100%;
+border-left: 1px solid #333;
+}
+.track:last-child {
+border-right: 1px solid #333;
+}
+.receptor {
+position: absolute;
+bottom: 10%;
+width: 100%;
+height: 12vh;
+background-color: rgba(255, 255, 255, 0.2);
+border-top: 2px solid #fff;
+}
+.receptor.active {
+background-color: rgba(255, 255, 0, 0.5);
+}
+.note {
+position: absolute;
+width: 100%;
+height: 5vh;
+background-color: #0f0;
+will-change: transform;
+}
+#score-display {
+position: absolute;
+top: 20px;
+left: 50%;
+transform: translateX(-50%);
+font-size: 2em;
+color: #fff;
+z-index: 10;
+}
+#start-screen {
+position: absolute;
+width: 100%;
+height: 100%;
+background-color: rgba(0,0,0,0.8);
+z-index: 20;
+display: flex;
+flex-direction: column;
+justify-content: center;
+align-items: center;
+}
+#start-button {
+padding: 15px 30px;
+font-size: 1.5em;
+cursor: pointer;
+border: 2px solid #fff;
+background-color: #000;
+color: #fff;
+border-radius: 10px;
+}
+#combo-display {
+position: absolute;
+top: 50%;
+left: 50%;
+transform: translate(-50%, -50%);
+font-size: 4em;
+color: rgba(255, 255, 255, 0.5);
+z-index: 5;
+opacity: 0;
+transition: opacity 0.2s;
+}
 </style>
 </head>
 <body>
-<div id="game">
-  <div id="score">分數: 0</div>
-  <div id="info">首次點擊開始遊戲，依節奏點擊下方方塊</div>
-  <div id="lanes">
-    <div class="lane" data-index="0"></div>
-    <div class="lane" data-index="1"></div>
-    <div class="lane" data-index="2"></div>
-    <div class="lane" data-index="3"></div>
-  </div>
+<div id="game-container">
+<div id="score-display">分數: 0</div>
+<div id="combo-display"></div>
+<div class="track" id="track0">
+<div class="receptor"></div>
 </div>
-
-<!-- 音樂：用免費授權BGM -->
-<audio id="bgm" src="https://cdn.jsdelivr.net/gh/jacksin123/mp3cdn@main/bgm.mp3" preload="auto"></audio>
-<audio id="hitSound" src="https://cdn.jsdelivr.net/gh/jacksin123/mp3cdn@main/hit.wav" preload="auto"></audio>
-<audio id="missSound" src="https://cdn.jsdelivr.net/gh/jacksin123/mp3cdn@main/miss.wav" preload="auto"></audio>
-
+<div class="track" id="track1" style="left: 25%;">
+<div class="receptor"></div>
+</div>
+<div class="track" id="track2" style="left: 50%;">
+<div class="receptor"></div>
+</div>
+<div class="track" id="track3" style="left: 75%;">
+<div class="receptor"></div>
+</div>
+</div>
+<div id="start-screen">
+<h1>下落式節奏遊戲</h1>
+<p>點擊開始遊戲</p>
+<button id="start-button">開始</button>
+</div>
+<audio id="game-music" src="https://www.chosic.com/wp-content/uploads/2021/07/The-Road-Home.mp3" preload="auto"></audio>
 <script>
-(() => {
-  const lanes = [...document.querySelectorAll('.lane')];
-  const scoreEl = document.getElementById('score');
-  const infoEl = document.getElementById('info');
-  const bgm = document.getElementById('bgm');
-  const hitSound = document.getElementById('hitSound');
-  const missSound = document.getElementById('missSound');
+const gameContainer = document.getElementById('game-container');
+const scoreDisplay = document.getElementById('score-display');
+const comboDisplay = document.getElementById('combo-display');
+const tracks = [document.getElementById('track0'), document.getElementById('track1'), document.getElementById('track2'), document.getElementById('track3')];
+const receptors = document.querySelectorAll('.receptor');
+const startScreen = document.getElementById('start-screen');
+const startButton = document.getElementById('start-button');
+const gameMusic = document.getElementById('game-music');
+let score = 0;
+let combo = 0;
+let noteSpeed = 3; // 調整音符下降速度 (秒)
+let notes = [];
+let gameStarted = false;
+const receptorBottom = 10; // % from bottom
+const perfectRange = 5; // % from receptor top for &#39;perfect&#39;
+const goodRange = 10; // % from receptor top for &#39;good&#39;
 
-  let notes = [];
-  let score = 0;
-  let gameStart = false;
-  const hitLineY = 20;  // 距離底部擊打區高度
-  const hitTolerance = 40; // 可接受誤差像素
+// 節拍數據 (時間 in ms, 軌道 0-3)
+const beatmap = [
+    { time: 1000, track: 0 }, { time: 1500, track: 1 }, { time: 2000, track: 2 }, { time: 2500, track: 3 },
+    { time: 3000, track: 0 }, { time: 3250, track: 2 }, { time: 3500, track: 1 }, { time: 3750, track: 3 },
+    { time: 4000, track: 0 }, { time: 4000, track: 3 }, { time: 4500, track: 1 }, { time: 4500, track: 2 },
+    { time: 5000, track: 0 }, { time: 5500, track: 1 }, { time: 6000, track: 2 }, { time: 6500, track: 3 },
+    { time: 7000, track: 1 }, { time: 7250, track: 3 }, { time: 7500, track: 0 }, { time: 7750, track: 2 },
+    { time: 8000, track: 1 }, { time: 8000, track: 2 }, { time: 8500, track: 0 }, { time: 8500, track: 3 },
+    { time: 9000, track: 1 }, { time: 9250, track: 2 }, { time: 9500, track: 3 }, { time: 9750, track: 0 },
+    { time: 10000, track: 1 }, { time: 10500, track: 2 }, { time: 11000, track: 0 }, { time: 11500, track: 3 },
+    { time: 12000, track: 2 }, { time: 12250, track: 0 }, { time: 12500, track: 1 }, { time: 12750, track: 3 },
+    { time: 13000, track: 0 }, { time: 13000, track: 2 }, { time: 13500, track: 1 }, { time: 13500, track: 3 },
+    // ... 在此添加更多節拍
+];
 
-  // 節奏資料（毫秒，lane 0~3）
-  const beatMap = [
-    {time: 0, lane:0},{time: 500, lane:1},{time: 1000, lane:2},{time:1500, lane:3},
-    {time: 2000, lane:0},{time: 2500, lane:1},{time: 3000, lane:2},{time: 3500, lane:3},
-    {time: 4000, lane:0},{time: 4500, lane:1},{time: 5000, lane:2},{time: 5500, lane:3},
-    {time: 6000, lane:0},{time: 6500, lane:1},{time: 7000, lane:2},{time: 7500, lane:3},
-    {time: 8000, lane:0},{time: 8500, lane:1},{time: 9000, lane:2},{time: 9500, lane:3},
-  ];
+startButton.addEventListener(&#39;click&#39;, startGame);
 
-  // 音符掉落速度 (像素/ms)
-  const speed = 0.25;
-  let startTime = null;
+function startGame() {
+    startScreen.style.display = &#39;none&#39;;
+    gameMusic.play();
+    gameStarted = true;
+    requestAnimationFrame(update);
 
-  function createNote(lane, spawnTime) {
-    const laneDiv = lanes[lane];
-    const note = document.createElement('div');
-    note.classList.add('note');
-    laneDiv.appendChild(note);
-    return {elem: note, lane, spawnTime, y: 180, hit:false};
-  }
+    beatmap.forEach(noteData =&gt; {
+        setTimeout(() =&gt; {
+            createNote(noteData.track);
+        }, noteData.time);
+    });
+}
 
-  function startGame() {
-    if (gameStart) return;
-    gameStart = true;
-    score = 0;
-    scoreEl.textContent = '分數: 0';
-    infoEl.textContent = '遊戲進行中...';
-    startTime = null;
-    notes.forEach(n => n.elem.remove());
-    notes = [];
+function createNote(trackIndex) {
+    const note = document.createElement(&#39;div&#39;);
+    note.className = &#39;note&#39;;
+    note.style.top = &#39;-5vh&#39;; // Start above the screen
+    note.dataset.track = trackIndex;
+    tracks[trackIndex].appendChild(note);
+    notes.push(note);
+}
 
-    // 深複製節奏陣列以免破壞原始資料
-    upcomingBeats = beatMap.map(b => ({...b}));
+function update() {
+    if (!gameStarted) return;
 
-    bgm.currentTime = 0;
-    bgm.play();
-    requestAnimationFrame(gameLoop);
-  }
+    const containerHeight = gameContainer.clientHeight;
+    const receptorPosition = containerHeight * (1 - receptorBottom / 100);
 
-  let upcomingBeats = [];
+    notes.forEach((note, index) =&gt; {
+        const currentTop = parseFloat(note.style.top);
+        const newTop = currentTop + (containerHeight / (noteSpeed * 60)); // 60 FPS assumption
+        note.style.transform = `translateY(${newTop}px)`;
 
-  function gameLoop(timestamp) {
-    if (!startTime) startTime = timestamp;
-    const elapsed = timestamp - startTime;
 
-    // 產生音符 (提前2秒生成)
-    while (upcomingBeats.length > 0 && upcomingBeats[0].time <= elapsed + 2000) {
-      const beat = upcomingBeats.shift();
-      notes.push(createNote(beat.lane, beat.time));
-    }
-
-    // 更新音符位置
-    notes.forEach(note => {
-      if (note.hit) return;
-      note.y = 180 - (elapsed - note.spawnTime) * speed;
-      if (note.y < -60) { // 跳過擊打區，視為miss
-        note.hit = true;
-        note.elem.remove();
-        missSound.currentTime = 0;
-        missSound.play();
-      } else {
-        note.elem.style.bottom = note.y + 'px';
-      }
+        if (newTop &gt; containerHeight) {
+            note.remove();
+            notes.splice(index, 1);
+            missedNote();
+        }
     });
 
-    // 過濾已處理音符
-    notes = notes.filter(n => !n.hit);
+    requestAnimationFrame(update);
+}
 
-    if (!bgm.paused) {
-      requestAnimationFrame(gameLoop);
+function handleInput(trackIndex) {
+    if (!gameStarted) return;
+
+    const receptor = receptors[trackIndex];
+    receptor.classList.add(&#39;active&#39;);
+    setTimeout(() =&gt; receptor.classList.remove(&#39;active&#39;), 100);
+
+    const receptorPos = receptor.getBoundingClientRect().top;
+    let hit = false;
+
+    for (let i = notes.length - 1; i &gt;= 0; i--) {
+        const note = notes[i];
+        if (parseInt(note.dataset.track) === trackIndex) {
+            const notePos = note.getBoundingClientRect().bottom;
+            const distance = Math.abs(receptorPos - notePos);
+            
+            if (distance &lt; receptor.clientHeight * 0.8) { // Perfect
+                updateScore(300);
+                combo++;
+                showCombo();
+                note.remove();
+                notes.splice(i, 1);
+                hit = true;
+                break;
+            } else if (distance &lt; receptor.clientHeight * 1.2) { // Good
+                updateScore(100);
+                combo++;
+                showCombo();
+                note.remove();
+                notes.splice(i, 1);
+                hit = true;
+                break;
+            }
+        }
+    }
+
+    if (!hit) {
+        // No note was close enough to be hit, treat as a mistake.
+    }
+}
+
+function missedNote() {
+    combo = 0;
+    showCombo();
+}
+
+function updateScore(points) {
+    score += points + combo * 10;
+    scoreDisplay.textContent = `分數: ${score}`;
+}
+
+function showCombo() {
+    if (combo &gt; 2) {
+        comboDisplay.textContent = `${combo} Combo`;
+        comboDisplay.style.opacity = 1;
+        setTimeout(() =&gt; {
+            comboDisplay.style.opacity = 0;
+        }, 500);
     } else {
-      infoEl.textContent = '遊戲結束！分數：' + score;
-      gameStart = false;
+        comboDisplay.style.opacity = 0;
     }
-  }
+}
 
-  // 判定擊打音符
-  function hitLane(lane) {
-    if (!gameStart) return;
-    lanes.forEach((l, i) => {
-      if (i === lane) {
-        l.classList.add('active');
-        setTimeout(() => l.classList.remove('active'), 150);
-      }
+// Touch controls
+for (let i = 0; i &lt; tracks.length; i++) {
+    tracks[i].addEventListener(&#39;touchstart&#39;, (e) =&gt; {
+        e.preventDefault();
+        handleInput(i);
     });
+}
 
-    // 找最近且未被擊中的音符
-    const candidates = notes.filter(n => n.lane === lane && !n.hit);
-    if (candidates.length === 0) {
-      missSound.currentTime = 0;
-      missSound.play();
-      return;
-    }
-
-    // 找距離擊打線最近的音符
-    let nearest = candidates.reduce((prev, curr) => {
-      return Math.abs(curr.y - hitLineY) < Math.abs(prev.y - hitLineY) ? curr : prev;
-    });
-
-    // 判斷是否在可接受範圍內
-    if (Math.abs(nearest.y - hitLineY) <= hitTolerance) {
-      nearest.hit = true;
-      nearest.elem.classList.add('hit');
-      score++;
-      scoreEl.textContent = '分數: ' + score;
-      hitSound.currentTime = 0;
-      hitSound.play();
-      setTimeout(() => nearest.elem.remove(), 300);
-    } else {
-      missSound.currentTime = 0;
-      missSound.play();
-    }
-  }
-
-  // 螢幕觸控判斷擊打哪個 lane
-  document.getElementById('game').addEventListener('touchstart', e => {
-    e.preventDefault();
-    for (let touch of e.touches) {
-      const x = touch.clientX;
-      const laneWidth = window.innerWidth / lanes.length;
-      const laneIndex = Math.floor(x / laneWidth);
-      hitLane(laneIndex);
-    }
-  }, {passive:false});
-
-  // 點擊事件（手機測試用）
-  document.getElementById('game').addEventListener('click', e => {
-    const x = e.clientX;
-    const laneWidth = window.innerWidth / lanes.length;
-    const laneIndex = Math.floor(x / laneWidth);
-    hitLane(laneIndex);
-  });
-
-  // 點擊頁面第一次啟動遊戲並播放音樂（因手機限制需要互動觸發）
-  document.body.addEventListener('click', () => {
-    if (!gameStart) startGame();
-  }, {once:true});
-
-})();
 </script>
 </body>
 </html>
