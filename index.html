@@ -1,284 +1,334 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>乒乓球遊戲 (手機版)</title>
-    <style>
-        /* 防止頁面滾動和奇怪的觸控效果 */
-        * {
-            -webkit-user-select: none; /* Safari */
-            -ms-user-select: none; /* IE 10+ */
-            user-select: none; 
-            touch-action: none; /* 禁用觸摸導致的瀏覽器行為，如滾動縮放 */
-        }
-        body {
-            background-color: #111;
-            color: #eee;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            padding: 10px;
-            box-sizing: border-box;
-            overflow: hidden; /* 隱藏滾動條 */
-        }
-        h1 {
-            font-size: 5vw;
-            max-font-size: 24px;
-            margin-bottom: 5px;
-            text-align: center;
-        }
-        p {
-            font-size: 3vw;
-            max-font-size: 16px;
-            margin-top: 0;
-            margin-bottom: 15px;
-            text-align: center;
-        }
-        canvas {
-            background-color: #000;
-            border: 2px solid #eee;
-            width: 100%;
-            max-width: 800px; /* 在大螢幕上的最大寬度 */
-            aspect-ratio: 2 / 1; /* 保持畫布長寬比 */
-            touch-action: none;
-        }
-        #restartBtn {
-            margin-top: 20px;
-            padding: 12px 24px;
-            font-size: 4vw;
-            max-font-size: 18px;
-            background-color: #333;
-            color: #eee;
-            border: 2px solid #eee;
-            border-radius: 8px;
-            cursor: pointer;
-            display: none; /* 遊戲結束前隱藏 */
-        }
-        #restartBtn:hover {
-            background-color: #eee;
-            color: #111;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>下落式節奏遊戲</title>
+<style>
+body {
+margin: 0;
+padding: 0;
+background-color: #000;
+color: #fff;
+font-family: sans-serif;
+text-align: center;
+overflow: hidden;
+}
+#game-container {
+position: relative;
+width: 100vw;
+height: 100vh;
+max-width: 450px; /* 限制最大寬度以適應手機螢幕 /
+margin: 0 auto;
+background-color: #111;
+overflow: hidden;
+}
+#note-lanes {
+position: absolute;
+bottom: 0;
+width: 100%;
+height: 100%;
+display: flex;
+}
+.lane {
+flex-grow: 1;
+border-left: 1px solid #444;
+border-right: 1px solid #444;
+box-sizing: border-box;
+position: relative;
+}
+.note {
+position: absolute;
+width: 100%;
+height: 25px;
+background-color: #3f51b5; / 藍色音符 */
+will-change: top;
+}
+#judgement-line {
+position: absolute;
+bottom: 15%;
+width: 100%;
+height: 5px;
+background-color: rgba(255, 255, 255, 0.8);
+box-shadow: 0px 0px 10px 3px #fff;
+}
+.judgement-feedback {
+position: absolute;
+left: 50%;
+top: 40%;
+transform: translateX(-50%);
+font-size: 3em;
+font-weight: bold;
+opacity: 0;
+animation: fade-out 0.5s forwards;
+}
+@keyframes fade-out {
+from { opacity: 1; transform: translateX(-50%) scale(1.2); }
+to { opacity: 0; transform: translateX(-50%) scale(1); }
+}
+#score-display {
+position: absolute;
+top: 20px;
+left: 50%;
+transform: translateX(-50%);
+font-size: 2em;
+z-index: 10;
+}
+#start-screen, #end-screen {
+position: absolute;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+background-color: rgba(0, 0, 0, 0.85);
+display: flex;
+flex-direction: column;
+justify-content: center;
+align-items: center;
+z-index: 20;
+}
+#start-screen h1, #end-screen h1 {
+font-size: 2.5em;
+margin-bottom: 20px;
+}
+#end-screen p {
+font-size: 1.5em;
+margin-bottom: 30px;
+}
+.button {
+padding: 15px 30px;
+font-size: 1.5em;
+background-color: #3f51b5;
+color: white;
+border: none;
+border-radius: 10px;
+cursor: pointer;
+transition: background-color 0.3s;
+}
+.button:hover {
+background-color: #303f9f;
+}
+</style>
 </head>
 <body>
-    <h1>乒乓球遊戲</h1>
-    <p>用滑鼠或手指觸控上下移動你的球拍，先得到 5 分者獲勝！</p>
-    <canvas id="pongCanvas"></canvas>
-    <button id="restartBtn">重新開始</button>
+<div id="game-container">
+<div id="start-screen">
+<h1>下落式節奏遊戲</h1>
+<button id="start-button" class="button">開始遊戲</button>
+</div>
+<div id="end-screen" style="display: none;">
+<h1>遊戲結束</h1>
+<p id="final-score"></p>
+<button id="restart-button" class="button">重新開始</button>
+</div>
+<div id="score-display">Score: 0</div>
+<div id="note-lanes">
+    <div class="lane" id="lane-0"></div>
+    <div class="lane" id="lane-1"></div>
+    <div class="lane" id="lane-2"></div>
+    <div class="lane" id="lane-3"></div>
+</div>
+<div id="judgement-line"></div>
 
-    <script>
-        const canvas = document.getElementById('pongCanvas');
-        const context = canvas.getContext('2d');
-        const restartBtn = document.getElementById('restartBtn');
+</div>
+<audio id="music" src="https://dl.dropboxusercontent.com/s/g8a13aa3zsd4i24/sample-music.mp3" preload="auto"></audio>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+const gameContainer = document.getElementById('game-container');
+const lanes = document.querySelectorAll('.lane');
+const judgementLine = document.getElementById('judgement-line');
+const scoreDisplay = document.getElementById('score-display');
+const startScreen = document.getElementById('start-screen');
+const endScreen = document.getElementById('end-screen');
+const startButton = document.getElementById('start-button');
+const restartButton = document.getElementById('restart-button');
+const finalScoreDisplay = document.getElementById('final-score');
+const music = document.getElementById('music');
+const NOTE_SPEED = 350; // pixels per second
+const JUDGEMENT_OFFSET_MS = 100; // ms, a larger value means you need to tap earlier
 
-        const WINNING_SCORE = 5;
-        let gameOver = false;
+// Beatmap: time (in seconds) and the lane (0-3)
+const beatmap = [
+    { time: 1.0, lane: 0 }, { time: 1.5, lane: 1 }, { time: 2.0, lane: 2 }, { time: 2.5, lane: 3 },
+    { time: 3.2, lane: 0 }, { time: 3.4, lane: 2 }, { time: 4.0, lane: 1 }, { time: 4.5, lane: 3 },
+    { time: 5.0, lane: 0 }, { time: 5.0, lane: 2 }, { time: 5.8, lane: 1 }, { time: 6.3, lane: 3 },
+    { time: 7.0, lane: 0 }, { time: 7.2, lane: 1 }, { time: 7.4, lane: 2 }, { time: 7.6, lane: 3 },
+    { time: 8.5, lane: 0 }, { time: 8.5, lane: 3 }, { time: 9.3, lane: 1 }, { time: 9.3, lane: 2 },
+    { time: 10.1, lane: 0 }, { time: 10.6, lane: 1 }, { time: 11.1, lane: 2 }, { time: 11.6, lane: 3 },
+    { time: 12.0, lane: 0 }, { time: 12.2, lane: 2 }, { time: 12.4, lane: 1 }, { time: 12.6, lane: 3 },
+    { time: 13.5, lane: 0 }, { time: 13.5, lane: 1 }, { time: 14.0, lane: 2 }, { time: 14.0, lane: 3 },
+    { time: 15.0, lane: 0 }, { time: 15.25, lane: 1 }, { time: 15.5, lane: 2 }, { time: 15.75, lane: 3 },
+    { time: 16.0, lane: 0 }, { time: 16.25, lane: 1 }, { time: 16.5, lane: 2 }, { time: 16.75, lane: 3 },
+    // ...add more notes for the rest of the song
+];
 
-        // 遊戲物件，尺寸將根據畫布大小動態計算
-        let paddleWidth, paddleHeight, ballRadius;
+let score = 0;
+let noteIndex = 0;
+let activeNotes = [];
+let gameStartTime = 0;
+let animationFrameId;
+let isGameRunning = false;
+
+function createNote(laneIndex) {
+    const note = document.createElement(&#39;div&#39;);
+    note.className = &#39;note&#39;;
+    note.style.top = &#39;-25px&#39;; // Start above the screen
+    lanes[laneIndex].appendChild(note);
+
+    const spawnTime = music.currentTime;
+    const noteData = {
+        element: note,
+        lane: laneIndex,
+        spawnTime: spawnTime,
+        targetTime: spawnTime + (gameContainer.clientHeight / NOTE_SPEED)
+    };
+    activeNotes.push(noteData);
+}
+
+function updateGame() {
+    if (!isGameRunning) return;
+
+    const currentTime = music.currentTime;
+    
+    // Spawn new notes based on beatmap
+    while (noteIndex &lt; beatmap.length &amp;&amp; currentTime &gt;= beatmap[noteIndex].time - (gameContainer.clientHeight / NOTE_SPEED)) {
+        const noteInfo = beatmap[noteIndex];
+        createNote(noteInfo.lane);
+        noteIndex++;
+    }
+
+    const judgementLineY = judgementLine.offsetTop;
+
+    // Move active notes and check for misses
+    for (let i = activeNotes.length - 1; i &gt;= 0; i--) {
+        const noteData = activeNotes[i];
+        const elapsedTime = currentTime - noteData.spawnTime;
+        const newY = elapsedTime * NOTE_SPEED;
+
+        noteData.element.style.top = `${newY}px`;
+
+        // Check for miss (note passed the judgement line)
+        if (newY &gt; judgementLineY + 20) {
+            lanes[noteData.lane].removeChild(noteData.element);
+            activeNotes.splice(i, 1);
+            showJudgementFeedback(&#39;Miss&#39;);
+        }
+    }
+
+    if (music.ended) {
+        endGame();
+    } else {
+        animationFrameId = requestAnimationFrame(updateGame);
+    }
+}
+
+function handleInput(laneIndex) {
+    if (!isGameRunning) return;
+
+    const judgementLineY = judgementLine.offsetTop;
+    let bestCandidate = null;
+    let minDistance = Infinity;
+
+    // Find the closest note in the tapped lane
+    for (const noteData of activeNotes) {
+        if (noteData.lane === laneIndex) {
+            const noteY = noteData.element.offsetTop + (noteData.element.clientHeight / 2);
+            const distance = Math.abs(noteY - judgementLineY);
+            
+            if (distance &lt; minDistance) {
+                minDistance = distance;
+                bestCandidate = noteData;
+            }
+        }
+    }
+    
+    if (bestCandidate) {
+        const distance = Math.abs(bestCandidate.element.offsetTop + (bestCandidate.element.clientHeight / 2) - judgementLineY);
         
-        const player = { x: 0, y: 0, width: 0, height: 0, color: 'white', score: 0 };
-        const computer = { x: 0, y: 0, width: 0, height: 0, color: 'white', score: 0 };
-        const ball = { x: 0, y: 0, radius: 0, speed: 0, velocityX: 0, velocityY: 0, color: 'white' };
-
-        // 根據畫布大小重新計算所有物件的尺寸和位置
-        function resizeAndPositionElements() {
-            // 設定內部解析度
-            canvas.width = canvas.clientWidth;
-            canvas.height = canvas.clientHeight;
-
-            // 相對尺寸
-            paddleWidth = canvas.width * 0.015;
-            paddleHeight = canvas.height * 0.2;
-            ballRadius = Math.min(canvas.width, canvas.height) * 0.02;
-
-            // 玩家球拍
-            player.width = paddleWidth;
-            player.height = paddleHeight;
-            player.x = canvas.width * 0.02; // 離左邊界2%
-            player.y = canvas.height / 2 - paddleHeight / 2;
-
-            // 電腦球拍
-            computer.width = paddleWidth;
-            computer.height = paddleHeight;
-            computer.x = canvas.width - paddleWidth - (canvas.width * 0.02);
-            computer.y = canvas.height / 2 - paddleHeight / 2;
-            
-            // 重置球的位置
-            resetBall();
-        }
-
-        // 球的位置重置
-        function resetBall() {
-            ball.x = canvas.width / 2;
-            ball.y = canvas.height / 2;
-            ball.radius = Math.min(canvas.width, canvas.height) * 0.02;
-            ball.speed = canvas.width * 0.007; // 速度也設為相對值
-            ball.velocityX = (Math.random() > 0.5 ? 1 : -1) * ball.speed;
-            ball.velocityY = (Math.random() > 0.5 ? 1 : -1) * ball.speed;
-        }
-
-        // 繪製矩形 (用於球拍)
-        function drawRect(x, y, w, h, color) {
-            context.fillStyle = color;
-            context.fillRect(x, y, w, h);
-        }
-
-        // 繪製圓形 (用於球)
-        function drawCircle(x, y, r, color) {
-            context.fillStyle = color;
-            context.beginPath();
-            context.arc(x, y, r, 0, Math.PI * 2, false);
-            context.closePath();
-            context.fill();
-        }
-
-        // 繪製文字 (用於分數)
-        function drawText(text, x, y, color, size) {
-            context.fillStyle = color;
-            context.font = `${size}px "Courier New", monospace`;
-            context.fillText(text, x, y);
-        }
-
-        // 繪製中間的虛線網
-        function drawNet() {
-            for (let i = 0; i < canvas.height; i += (canvas.height / 20)) {
-                drawRect(canvas.width / 2 - 1, i, 2, canvas.height / 40, 'grey');
-            }
+        let judgement = &#39;&#39;;
+        if (distance &lt; 30) {
+            judgement = &#39;Perfect&#39;;
+            score += 100;
+        } else if (distance &lt; 60) {
+            judgement = &#39;Good&#39;;
+            score += 50;
+        } else {
+            judgement = &#39;Bad&#39;;
         }
         
-        // 碰撞偵測
-        function collision(b, p) {
-            return b.x + b.radius > p.x && b.x - b.radius < p.x + p.width &&
-                   b.y + b.radius > p.y && b.y - b.radius < p.y + p.height;
-        }
+        showJudgementFeedback(judgement);
+        scoreDisplay.textContent = `Score: ${score}`;
+        
+        // Remove the hit note
+        bestCandidate.element.remove();
+        activeNotes = activeNotes.filter(n =&gt; n !== bestCandidate);
+    }
+}
 
-        // 控制玩家球拍的移動
-        function movePaddle(event) {
-            event.preventDefault(); // 防止頁面滾動
-            let rect = canvas.getBoundingClientRect();
-            let newY;
+function showJudgementFeedback(text) {
+    const feedback = document.createElement(&#39;div&#39;);
+    feedback.className = &#39;judgement-feedback&#39;;
+    feedback.textContent = text;
 
-            if (event.type === 'touchmove' || event.type === 'touchstart') {
-                newY = event.touches[0].clientY - rect.top;
-            } else if (event.type === 'mousemove') {
-                newY = event.clientY - rect.top;
-            }
+    if (text === &#39;Perfect&#39;) feedback.style.color = &#39;#4caf50&#39;; // Green
+    else if (text === &#39;Good&#39;) feedback.style.color = &#39;#ffeb3b&#39;; // Yellow
+    else if (text === &#39;Bad&#39;) feedback.style.color = &#39;#f44336&#39;; // Red
+    else if (text === &#39;Miss&#39;) feedback.style.color = &#39;#9e9e9e&#39;; // Grey
 
-            player.y = newY - player.height / 2;
-            
-            // 防止球拍移出畫布
-            if (player.y < 0) player.y = 0;
-            if (player.y + player.height > canvas.height) player.y = canvas.height - player.height;
-        }
+    gameContainer.appendChild(feedback);
+    
+    setTimeout(() =&gt; {
+        feedback.remove();
+    }, 500);
+}
 
-        // 更新遊戲狀態：移動、碰撞、計分等
-        function update() {
-            if (gameOver) return;
+function resetGame() {
+    score = 0;
+    noteIndex = 0;
+    activeNotes.forEach(noteData =&gt; noteData.element.remove());
+    activeNotes = [];
+    scoreDisplay.textContent = &#39;Score: 0&#39;;
+    music.currentTime = 0;
+    isGameRunning = false;
+    cancelAnimationFrame(animationFrameId);
+}
 
-            ball.x += ball.velocityX;
-            ball.y += ball.velocityY;
+function startGame() {
+    resetGame();
+    startScreen.style.display = &#39;none&#39;;
+    endScreen.style.display = &#39;none&#39;;
+    isGameRunning = true;
+    music.play();
+    gameStartTime = Date.now();
+    updateGame();
+}
 
-            // AI 控制
-            computer.y += (ball.y - (computer.y + computer.height / 2)) * 0.1;
+function endGame() {
+    isGameRunning = false;
+    cancelAnimationFrame(animationFrameId);
+    finalScoreDisplay.textContent = `最終得分: ${score}`;
+    endScreen.style.display = &#39;flex&#39;;
+}
 
-            // 碰撞牆壁
-            if (ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) {
-                ball.velocityY = -ball.velocityY;
-            }
+// Event Listeners
+startButton.addEventListener(&#39;click&#39;, startGame);
+restartButton.addEventListener(&#39;click&#39;, startGame);
 
-            let currentPaddle = (ball.x < canvas.width / 2) ? player : computer;
-            if (collision(ball, currentPaddle)) {
-                let collidePoint = (ball.y - (currentPaddle.y + currentPaddle.height / 2)) / (currentPaddle.height / 2);
-                let angleRad = (Math.PI / 4) * collidePoint;
-                let direction = (ball.x < canvas.width / 2) ? 1 : -1;
-                ball.velocityX = direction * ball.speed * Math.cos(angleRad);
-                ball.velocityY = ball.speed * Math.sin(angleRad);
-                ball.speed += 0.2; // 每次撞擊後增加球速
-            }
-            
-            // 計分
-            if (ball.x - ball.radius < 0) {
-                computer.score++;
-                resetBall();
-            } else if (ball.x + ball.radius > canvas.width) {
-                player.score++;
-                resetBall();
-            }
+// Setup input listeners for each lane
+lanes.forEach((lane, index) =&gt; {
+    const laneIndex = index;
+    // For mobile touch
+    lane.addEventListener(&#39;touchstart&#39;, (e) =&gt; {
+        e.preventDefault(); // Prevent scrolling and other default behaviors
+        handleInput(laneIndex);
+    }, { passive: false });
+    // For computer mouse click
+    lane.addEventListener(&#39;mousedown&#39;, () =&gt; {
+        handleInput(laneIndex);
+    });
+});
 
-            if (player.score === WINNING_SCORE || computer.score === WINNING_SCORE) {
-                gameOver = true;
-                restartBtn.style.display = 'block';
-            }
-        }
-
-        // 渲染畫面
-        function render() {
-            drawRect(0, 0, canvas.width, canvas.height, '#000');
-            
-            const scoreSize = canvas.height * 0.15;
-            drawText(player.score, canvas.width / 4, canvas.height / 5, 'white', scoreSize);
-            drawText(computer.score, 3 * canvas.width / 4, canvas.height / 5, 'white', scoreSize);
-
-            drawNet();
-
-            drawRect(player.x, player.y, player.width, player.height, player.color);
-            drawRect(computer.x, computer.y, computer.width, computer.height, computer.color);
-            
-            if(!gameOver) {
-                drawCircle(ball.x, ball.y, ball.radius, ball.color);
-            }
-            
-            if (gameOver) {
-                let winnerText = (player.score === WINNING_SCORE) ? "你贏了！" : "電腦獲勝！";
-                context.fillStyle = "yellow";
-                context.font = `bold ${canvas.height * 0.12}px sans-serif`;
-                context.textAlign = 'center';
-                context.fillText(winnerText, canvas.width / 2, canvas.height / 2);
-            }
-        }
-
-        // 遊戲主循環
-        function gameLoop() {
-            update();
-            render();
-            requestAnimationFrame(gameLoop);
-        }
-
-        // 初始化與事件監聽
-        function initialize() {
-            resizeAndPositionElements();
-            
-            // 監聽視窗大小變化
-            window.addEventListener('resize', resizeAndPositionElements);
-            
-            // 滑鼠控制
-            canvas.addEventListener('mousemove', movePaddle);
-
-            // 觸控控制
-            canvas.addEventListener('touchstart', movePaddle);
-            canvas.addEventListener('touchmove', movePaddle);
-
-            // 重新開始按鈕
-            restartBtn.addEventListener('click', () => {
-                player.score = 0;
-                computer.score = 0;
-                gameOver = false;
-                restartBtn.style.display = 'none';
-                context.textAlign = 'start'; // 重置文字對齊
-                resizeAndPositionElements();
-            });
-
-            requestAnimationFrame(gameLoop);
-        }
-
-        initialize();
-
-    </script>
+});
+</script>
 </body>
 </html>
