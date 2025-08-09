@@ -1,272 +1,137 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>下落式節奏遊戲</title>
-<style>
-body, html {
-margin: 0;
-padding: 0;
-overflow: hidden;
-background-color: #000;
-color: #fff;
-font-family: Arial, sans-serif;
-height: 100%;
-display: flex;
-justify-content: center;
-align-items: center;
-text-align: center;
-}
-#game-container {
-position: relative;
-width: 100vw;
-height: 100vh;
-background-color: #111;
-}
-.track {
-position: absolute;
-bottom: 0;
-width: 25%;
-height: 100%;
-border-left: 1px solid #333;
-}
-.track:last-child {
-border-right: 1px solid #333;
-}
-.receptor {
-position: absolute;
-bottom: 10%;
-width: 100%;
-height: 12vh;
-background-color: rgba(255, 255, 255, 0.2);
-border-top: 2px solid #fff;
-}
-.receptor.active {
-background-color: rgba(255, 255, 0, 0.5);
-}
-.note {
-position: absolute;
-width: 100%;
-height: 5vh;
-background-color: #0f0;
-will-change: transform;
-}
-#score-display {
-position: absolute;
-top: 20px;
-left: 50%;
-transform: translateX(-50%);
-font-size: 2em;
-color: #fff;
-z-index: 10;
-}
-#start-screen {
-position: absolute;
-width: 100%;
-height: 100%;
-background-color: rgba(0,0,0,0.8);
-z-index: 20;
-display: flex;
-flex-direction: column;
-justify-content: center;
-align-items: center;
-}
-#start-button {
-padding: 15px 30px;
-font-size: 1.5em;
-cursor: pointer;
-border: 2px solid #fff;
-background-color: #000;
-color: #fff;
-border-radius: 10px;
-}
-#combo-display {
-position: absolute;
-top: 50%;
-left: 50%;
-transform: translate(-50%, -50%);
-font-size: 4em;
-color: rgba(255, 255, 255, 0.5);
-z-index: 5;
-opacity: 0;
-transition: opacity 0.2s;
-}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+  <title>下落式節奏遊戲</title>
+  <style>
+    body { margin:0; overflow:hidden; background:#000; }
+    canvas { display:block; }
+    #startOverlay {
+      position:absolute;
+      top:0; left:0;
+      width:100%; height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:#fff;
+      font-size:24px;
+      cursor:pointer;
+      background:rgba(0,0,0,0.5);
+    }
+  </style>
 </head>
 <body>
-<div id="game-container">
-<div id="score-display">分數: 0</div>
-<div id="combo-display"></div>
-<div class="track" id="track0">
-<div class="receptor"></div>
-</div>
-<div class="track" id="track1" style="left: 25%;">
-<div class="receptor"></div>
-</div>
-<div class="track" id="track2" style="left: 50%;">
-<div class="receptor"></div>
-</div>
-<div class="track" id="track3" style="left: 75%;">
-<div class="receptor"></div>
-</div>
-</div>
-<div id="start-screen">
-<h1>下落式節奏遊戲</h1>
-<p>點擊開始遊戲</p>
-<button id="start-button">開始</button>
-</div>
-<audio id="game-music" src="https://www.chosic.com/wp-content/uploads/2021/07/The-Road-Home.mp3" preload="auto"></audio>
-<script>
-const gameContainer = document.getElementById('game-container');
-const scoreDisplay = document.getElementById('score-display');
-const comboDisplay = document.getElementById('combo-display');
-const tracks = [document.getElementById('track0'), document.getElementById('track1'), document.getElementById('track2'), document.getElementById('track3')];
-const receptors = document.querySelectorAll('.receptor');
-const startScreen = document.getElementById('start-screen');
-const startButton = document.getElementById('start-button');
-const gameMusic = document.getElementById('game-music');
-let score = 0;
-let combo = 0;
-let noteSpeed = 3; // 調整音符下降速度 (秒)
-let notes = [];
-let gameStarted = false;
-const receptorBottom = 10; // % from bottom
-const perfectRange = 5; // % from receptor top for &#39;perfect&#39;
-const goodRange = 10; // % from receptor top for &#39;good&#39;
+  <canvas id="game"></canvas>
+  <div id="startOverlay">點擊開始遊戲</div>
+  <audio id="music" src="https://www.bensound.com/bensound-music/bensound-energy.mp3"></audio>
+  <script>
+  (function(){
+    const canvas = document.getElementById('game'),
+          ctx = canvas.getContext('2d'),
+          startOverlay = document.getElementById('startOverlay'),
+          music = document.getElementById('music');
 
-// 節拍數據 (時間 in ms, 軌道 0-3)
-const beatmap = [
-    { time: 1000, track: 0 }, { time: 1500, track: 1 }, { time: 2000, track: 2 }, { time: 2500, track: 3 },
-    { time: 3000, track: 0 }, { time: 3250, track: 2 }, { time: 3500, track: 1 }, { time: 3750, track: 3 },
-    { time: 4000, track: 0 }, { time: 4000, track: 3 }, { time: 4500, track: 1 }, { time: 4500, track: 2 },
-    { time: 5000, track: 0 }, { time: 5500, track: 1 }, { time: 6000, track: 2 }, { time: 6500, track: 3 },
-    { time: 7000, track: 1 }, { time: 7250, track: 3 }, { time: 7500, track: 0 }, { time: 7750, track: 2 },
-    { time: 8000, track: 1 }, { time: 8000, track: 2 }, { time: 8500, track: 0 }, { time: 8500, track: 3 },
-    { time: 9000, track: 1 }, { time: 9250, track: 2 }, { time: 9500, track: 3 }, { time: 9750, track: 0 },
-    { time: 10000, track: 1 }, { time: 10500, track: 2 }, { time: 11000, track: 0 }, { time: 11500, track: 3 },
-    { time: 12000, track: 2 }, { time: 12250, track: 0 }, { time: 12500, track: 1 }, { time: 12750, track: 3 },
-    { time: 13000, track: 0 }, { time: 13000, track: 2 }, { time: 13500, track: 1 }, { time: 13500, track: 3 },
-    // ... 在此添加更多節拍
-];
+    let cw, ch;
+    function resize(){ cw = canvas.width = window.innerWidth; ch = canvas.height = window.innerHeight; }
+    window.addEventListener('resize', resize); resize();
 
-startButton.addEventListener(&#39;click&#39;, startGame);
+    const lanes = 4,
+          laneW = () => cw / lanes,
+          receptorY = () => ch - 100,
+          noteSize = () => laneW() * 0.8,
+          hitMargin = 30,
+          preSpawnTime = 2000,
+          beatInterval = 600,
+          pattern = [0,1,2,3,1,0,3,2,0,1,2,3,2,1,3,0];
 
-function startGame() {
-    startScreen.style.display = &#39;none&#39;;
-    gameMusic.play();
-    gameStarted = true;
-    requestAnimationFrame(update);
+    let speed, notes = [], active = [], startTime = 0, playing = false;
 
-    beatmap.forEach(noteData =&gt; {
-        setTimeout(() =&gt; {
-            createNote(noteData.track);
-        }, noteData.time);
+    function initNotes(){
+      notes = pattern.map((lane, i) => {
+        const t = i * beatInterval;
+        return { lane, t, spawnTime: t - preSpawnTime, added:false, hit:false };
+      });
+    }
+
+    function startGame(){
+      if (playing) return;
+      resize();
+      speed = ch / preSpawnTime;
+      initNotes();
+      startTime = performance.now();
+      music.play();
+      playing = true;
+      startOverlay.style.display = 'none';
+      requestAnimationFrame(loop);
+    }
+
+    startOverlay.addEventListener('click', startGame);
+
+    document.addEventListener('keydown', e => {
+      const keyMap = { 'a':0, 's':1, 'd':2, 'f':3 };
+      if (keyMap[e.key] != null) tryHit(keyMap[e.key]);
     });
-}
 
-function createNote(trackIndex) {
-    const note = document.createElement(&#39;div&#39;);
-    note.className = &#39;note&#39;;
-    note.style.top = &#39;-5vh&#39;; // Start above the screen
-    note.dataset.track = trackIndex;
-    tracks[trackIndex].appendChild(note);
-    notes.push(note);
-}
+    canvas.addEventListener('touchstart', e => {
+      e.preventDefault();
+      const x = e.touches[0].clientX;
+      const lane = Math.floor(x / laneW());
+      tryHit(lane);
+    });
 
-function update() {
-    if (!gameStarted) return;
-
-    const containerHeight = gameContainer.clientHeight;
-    const receptorPosition = containerHeight * (1 - receptorBottom / 100);
-
-    notes.forEach((note, index) =&gt; {
-        const currentTop = parseFloat(note.style.top);
-        const newTop = currentTop + (containerHeight / (noteSpeed * 60)); // 60 FPS assumption
-        note.style.transform = `translateY(${newTop}px)`;
-
-
-        if (newTop &gt; containerHeight) {
-            note.remove();
-            notes.splice(index, 1);
-            missedNote();
+    function tryHit(lane){
+      const now = performance.now() - startTime;
+      for (let i = 0; i < active.length; i++){
+        const n = active[i];
+        if (n.lane === lane && !n.hit){
+          const y = (now - n.spawnTime) * speed;
+          if (Math.abs(y - receptorY()) <= hitMargin){
+            n.hit = true;
+            active.splice(i, 1);
+          }
+          break;
         }
-    });
+      }
+    }
 
-    requestAnimationFrame(update);
-}
-
-function handleInput(trackIndex) {
-    if (!gameStarted) return;
-
-    const receptor = receptors[trackIndex];
-    receptor.classList.add(&#39;active&#39;);
-    setTimeout(() =&gt; receptor.classList.remove(&#39;active&#39;), 100);
-
-    const receptorPos = receptor.getBoundingClientRect().top;
-    let hit = false;
-
-    for (let i = notes.length - 1; i &gt;= 0; i--) {
-        const note = notes[i];
-        if (parseInt(note.dataset.track) === trackIndex) {
-            const notePos = note.getBoundingClientRect().bottom;
-            const distance = Math.abs(receptorPos - notePos);
-            
-            if (distance &lt; receptor.clientHeight * 0.8) { // Perfect
-                updateScore(300);
-                combo++;
-                showCombo();
-                note.remove();
-                notes.splice(i, 1);
-                hit = true;
-                break;
-            } else if (distance &lt; receptor.clientHeight * 1.2) { // Good
-                updateScore(100);
-                combo++;
-                showCombo();
-                note.remove();
-                notes.splice(i, 1);
-                hit = true;
-                break;
-            }
+    function loop(){
+      const now = performance.now() - startTime;
+      // 生成 notes
+      notes.forEach(n => {
+        if (!n.added && now >= n.spawnTime){
+          n.added = true;
+          active.push(n);
         }
+      });
+
+      // 繪製
+      ctx.clearRect(0, 0, cw, ch);
+
+      // receptor
+      for (let i = 0; i < lanes; i++){
+        ctx.fillStyle = '#333';
+        ctx.fillRect(i * laneW() + laneW()*0.1, receptorY(), noteSize(), 20);
+      }
+
+      // notes
+      active.forEach(n => {
+        const y = (now - n.spawnTime) * speed;
+        ctx.fillStyle = '#0f0';
+        ctx.fillRect(n.lane * laneW() + laneW()*0.1, y, noteSize(), noteSize());
+      });
+
+      // 移除超過底部
+      active = active.filter(n => {
+        const y = (now - n.spawnTime) * speed;
+        return y < ch + noteSize();
+      });
+
+      if (playing && (active.length > 0 || notes.some(n => !n.added))){
+        requestAnimationFrame(loop);
+      }
     }
-
-    if (!hit) {
-        // No note was close enough to be hit, treat as a mistake.
-    }
-}
-
-function missedNote() {
-    combo = 0;
-    showCombo();
-}
-
-function updateScore(points) {
-    score += points + combo * 10;
-    scoreDisplay.textContent = `分數: ${score}`;
-}
-
-function showCombo() {
-    if (combo &gt; 2) {
-        comboDisplay.textContent = `${combo} Combo`;
-        comboDisplay.style.opacity = 1;
-        setTimeout(() =&gt; {
-            comboDisplay.style.opacity = 0;
-        }, 500);
-    } else {
-        comboDisplay.style.opacity = 0;
-    }
-}
-
-// Touch controls
-for (let i = 0; i &lt; tracks.length; i++) {
-    tracks[i].addEventListener(&#39;touchstart&#39;, (e) =&gt; {
-        e.preventDefault();
-        handleInput(i);
-    });
-}
-
-</script>
+  })();
+  </script>
 </body>
 </html>
